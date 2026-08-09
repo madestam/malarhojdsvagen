@@ -1,0 +1,66 @@
+/* Designsystemets variabler — varm "anslagstavla"-känsla, ljust + mörkt läge. */
+:root {
+  color-scheme: light dark;
+
+  /* Ytor */
+  --bg:             #FAF6F0;
+  --bg-card:        #FFFFFF;
+  --bg-sunken:      #F1EBE2;
+  --border:         #E5DDD0;
+
+  /* Text */
+  --text:           #2B2620;
+  --text-secondary: #6E655A;
+
+  /* Accent (terrakotta) */
+  --accent:          #C05621;
+  --accent-soft:     #F6E3D7;
+  --accent-contrast: #FFFFFF;
+
+  /* Semantik */
+  --success:      #047857;
+  --success-soft: #D9F0E5;
+  --warning:      #B45309;
+  --warning-soft: #FBEED7;
+  --danger:       #B42318;
+
+  /* Statusfärger för ansökningar */
+  --st-att-soka:   #6E655A;
+  --st-sokt:       #0072B2;
+  --st-intervju:   #B45309;
+  --st-nej-tack:   #8A6A6E;
+  --st-erbjudande: #047857;
+
+  --radius: 14px;
+  --radius-chip: 999px;
+  --shadow-card: 0 1px 3px rgba(43, 38, 32, 0.07);
+  --tap: 44px;
+
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:             #1C1917;
+    --bg-card:        #29241F;
+    --bg-sunken:      #141110;
+    --border:         #3C352E;
+    --text:           #EDE6DC;
+    --text-secondary: #A69B8C;
+    --accent:          #E8834A;
+    --accent-soft:     #3A2A1E;
+    --accent-contrast: #1C1917;
+    --success:      #34C79A;
+    --success-soft: #1E332B;
+    --warning:      #E5A445;
+    --warning-soft: #3A2E1A;
+    --danger:       #F08080;
+    --st-att-soka:   #A69B8C;
+    --st-sokt:       #4BA3D9;
+    --st-intervju:   #E5A445;
+    --st-nej-tack:   #B58F94;
+    --st-erbjudande: #34C79A;
+    --shadow-card: none;
+  }
+}

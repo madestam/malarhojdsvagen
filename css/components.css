@@ -1,0 +1,5 @@
+/* Återanvändbara komponenter — fylls på under bygget. */
+.placeholder {
+  margin-top: 24px;
+  color: var(--text-secondary);
+}
