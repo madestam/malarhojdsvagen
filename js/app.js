@@ -6,7 +6,7 @@ import * as data from './data.js';
 import { GithubStore } from './store/github-store.js';
 import { LocalStore } from './store/local-store.js';
 import { tokenStore, identityStore, devFlag, fileCache } from './store/cache.js';
-import { currentWeekId, addWeeks, isInReportWindow, currentMonthStr } from './dates.js';
+import { currentWeekId, addWeeks, isInReportWindow, currentMonthStr, isoDateStr, todayStockholm } from './dates.js';
 import { normalizeWeek, normalizeJobs } from './models.js';
 import { loadFamily, setWeek, routeChanged } from './controller.js';
 import { toast } from './ui/toast.js';
@@ -26,6 +26,8 @@ let lastRoute = null;
 let keyGateOpen = false;
 let devStore = null;
 let appWired = false; // skydd mot dubbla lyssnare när startApp körs igen (nyckelbyte)
+let renderedDay = null;            // Stockholmsdag vid senaste rendering
+let renderedWeekWasCurrent = false; // visade vi "aktuell vecka" då?
 
 function renderBanner() {
   const s = getState();
@@ -55,6 +57,8 @@ function renderJobBadge() {
 
 function renderApp() {
   const s = getState();
+  renderedDay = isoDateStr(todayStockholm());
+  renderedWeekWasCurrent = s.weekId === currentWeekId();
 
   for (const tab of document.querySelectorAll('.tabbar .tab')) {
     if (tab.dataset.route === s.route) tab.setAttribute('aria-current', 'page');
@@ -64,6 +68,12 @@ function renderApp() {
   renderBanner();
   renderJobBadge();
 
+  // Omritningen förstör fokuserad knapp — kom ihåg dess nyckel och
+  // återställ fokus efteråt (viktigt för tangentbord och skärmläsare).
+  const focusKey = viewEl.contains(document.activeElement)
+    ? document.activeElement.dataset?.fkey || null
+    : null;
+
   const keepScroll = lastRoute === s.route ? window.scrollY : 0;
   if (lastRoute !== s.route) routeChanged();
   VIEWS[s.route].render(viewEl);
@@ -71,6 +81,9 @@ function renderApp() {
   if (viewEl.__autoscrollTo) {
     viewEl.__autoscrollTo.scrollIntoView({ block: 'start' });
     viewEl.__autoscrollTo = null;
+  }
+  if (focusKey) {
+    viewEl.querySelector(`[data-fkey="${CSS.escape(focusKey)}"]`)?.focus({ preventScroll: true });
   }
   lastRoute = s.route;
 }
@@ -109,6 +122,19 @@ function wireDataEvents() {
 
   window.addEventListener('online', () => setState({ online: true }));
   window.addEventListener('offline', () => setState({ online: false }));
+
+  // iOS fryser hemskärmsappar i timmar/dagar. Vid uppvaknande på en ny dag
+  // måste vyn ritas om (Idag-markering, rapportbadge) och — om användaren
+  // stod på det som då var aktuell vecka — följa med in i den nya veckan.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (renderedDay === isoDateStr(todayStockholm())) return;
+    if (renderedWeekWasCurrent && getState().weekId !== currentWeekId()) {
+      setWeek(currentWeekId());
+    } else {
+      setState({});
+    }
+  });
 }
 
 function openKeyGate() {

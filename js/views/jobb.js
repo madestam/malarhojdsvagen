@@ -62,15 +62,16 @@ export function render(container) {
   }
 
   if (seekers.length > 1) {
+    // Vanliga knappar med aria-pressed (samma mönster som filterchipsen) —
+    // inte role=tab, som utlovar tangentbordsbeteende vi inte har.
     const seg = el('div', 'segmented');
-    seg.setAttribute('role', 'tablist');
+    seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', 'Välj jobbsökare');
     seg.style.marginTop = '10px';
     for (const m of seekers) {
       const btn = el('button', '', m.name);
-      btn.setAttribute('role', 'tab');
+      btn.dataset.fkey = `seg:${m.id}`;
       btn.setAttribute('aria-pressed', String(m.id === person));
-      btn.setAttribute('aria-selected', String(m.id === person));
       btn.addEventListener('click', () => {
         expandedStep = null;
         checklistOpen = null;
@@ -135,6 +136,7 @@ function renderReportBanner(person, jobs) {
   actions.appendChild(open);
 
   const doneBtn = el('button', 'btn-quiet btn-small', 'Klart – jag har rapporterat');
+  doneBtn.dataset.fkey = 'report-done';
   doneBtn.addEventListener('click', () => {
     const [y, m] = month.split('-').map(Number);
     const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
@@ -178,6 +180,7 @@ function renderGoalCard(person, member, jobs) {
   const head = el('div', 'day-head');
   head.appendChild(el('h2', 'card-title', 'Veckans mål'));
   const edit = el('button', 'btn-quiet btn-small', 'Ändra mål');
+  edit.dataset.fkey = 'goal-edit';
   edit.addEventListener('click', () => openGoalSheet(person, jobs));
   head.appendChild(edit);
   card.appendChild(head);
@@ -254,6 +257,7 @@ function renderChecklistCard(person, jobs) {
   const isOpen = checklistOpen !== null ? checklistOpen : doneCount < 5;
 
   const toggle = el('button', 'collapse-toggle' + (isOpen ? ' collapse-open' : ''));
+  toggle.dataset.fkey = 'af-toggle';
   toggle.setAttribute('aria-expanded', String(isOpen));
   const tWrap = el('span');
   tWrap.appendChild(el('span', 'card-title', AF_CHECKLIST.title));
@@ -286,6 +290,7 @@ function renderStep(person, jobs, step) {
   const row = el('div', 'check-step-row');
 
   const check = el('button', 'chore-check');
+  check.dataset.fkey = `step:${step.id}`;
   check.setAttribute('role', 'checkbox');
   check.setAttribute('aria-checked', String(done));
   check.setAttribute('aria-label', `Markera "${step.title}" som ${done ? 'ej klar' : 'klar'}`);
@@ -305,6 +310,7 @@ function renderStep(person, jobs, step) {
   row.appendChild(check);
 
   const main = el('button', 'check-step-main');
+  main.dataset.fkey = `step-main:${step.id}`;
   main.setAttribute('aria-expanded', String(isExpanded));
   const title = el('span', 'check-step-title', step.title);
   if (step.important) title.appendChild(el('span', 'important-badge', 'Viktig'));
@@ -352,6 +358,7 @@ function renderApplicationsCard(person, jobs) {
   t.appendChild(el('span', 'card-sub', ` ${(jobs.applications || []).length} st`));
   head.appendChild(t);
   const add = el('button', 'btn btn-small', '+ Ny ansökan');
+  add.dataset.fkey = 'app-add';
   add.addEventListener('click', () => openApplicationSheet({ person, application: null }));
   head.appendChild(add);
   card.appendChild(head);
@@ -377,6 +384,7 @@ function renderApplicationsCard(person, jobs) {
   const filterRow = el('div', 'filter-row');
   for (const f of FILTERS) {
     const chip = el('button', 'filter-chip', f.label);
+    chip.dataset.fkey = `filter:${f.id}`;
     chip.setAttribute('aria-pressed', String(filter === f.id));
     chip.addEventListener('click', () => {
       filter = f.id;
@@ -396,6 +404,7 @@ function renderApplicationsCard(person, jobs) {
 
   for (const a of shown) {
     const row = el('button', 'app-row');
+    row.dataset.fkey = `app:${a.id}`;
     row.setAttribute('aria-label', `Redigera ansökan ${a.company}`);
     const main = el('span', 'app-main');
     main.appendChild(el('span', 'app-company', a.company));

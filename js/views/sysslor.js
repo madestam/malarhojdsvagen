@@ -28,12 +28,14 @@ export function render(container) {
   const nav = el('div', 'week-nav');
   const prev = el('button', 'week-nav-btn', '‹');
   prev.setAttribute('aria-label', 'Föregående vecka');
+  prev.dataset.fkey = 'week-prev';
   prev.addEventListener('click', () => setWeek(addWeeks(s.weekId, -1)));
   const titleWrap = el('div', 'week-title-wrap');
   titleWrap.appendChild(el('h1', 'view-title', 'Sysslor'));
   titleWrap.appendChild(el('div', 'week-range', `${fmtWeekLabel(s.weekId)} · ${fmtWeekRange(s.weekId)}`));
   const next = el('button', 'week-nav-btn', '›');
   next.setAttribute('aria-label', 'Nästa vecka');
+  next.dataset.fkey = 'week-next';
   next.addEventListener('click', () => setWeek(addWeeks(s.weekId, 1)));
   nav.append(prev, titleWrap, next);
   header.appendChild(nav);
@@ -55,6 +57,7 @@ export function render(container) {
   const existingLabels = new Set(chores.map((c) => c.label.toLowerCase()));
   for (const t of s.family.choreTemplates || []) {
     const chip = el('button', 'template-chip', t.label);
+    chip.dataset.fkey = `tpl:${t.id}`;
     if (existingLabels.has(t.label.toLowerCase())) {
       chip.disabled = true;
       chip.textContent = t.label + ' ✓';
@@ -73,23 +76,29 @@ export function render(container) {
   input.type = 'text';
   input.placeholder = 'Lägg till syssla…';
   input.setAttribute('aria-label', 'Ny syssla');
+  input.dataset.fkey = 'chore-input';
   input.value = draftText;
   input.addEventListener('input', () => {
     draftText = input.value;
     addBtn.disabled = !input.value.trim();
   });
+  // OBS: draftText måste nollas FÖRE addChore — den optimistiska omritningen
+  // sker synkront inne i anropet och bygger det nya fältet från draftText.
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && input.value.trim()) {
-      addChore(input.value.trim());
+      const label = input.value.trim();
       draftText = '';
+      addChore(label);
     }
   });
   const addBtn = el('button', 'btn btn-small', 'Lägg till');
+  addBtn.dataset.fkey = 'chore-add';
   addBtn.disabled = !draftText.trim();
   addBtn.addEventListener('click', () => {
     if (input.value.trim()) {
-      addChore(input.value.trim());
+      const label = input.value.trim();
       draftText = '';
+      addChore(label);
     }
   });
   inputRow.append(input, addBtn);
@@ -134,6 +143,7 @@ function renderChoreRow(chore) {
   const row = el('div', 'chore-row' + (chore.done ? ' done' : ''));
 
   const check = el('button', 'chore-check');
+  check.dataset.fkey = `chore:${chore.id}`;
   check.setAttribute('role', 'checkbox');
   check.setAttribute('aria-checked', String(chore.done));
   check.setAttribute('aria-label', `Markera ${chore.label} som ${chore.done ? 'ej klar' : 'klar'}`);
@@ -152,6 +162,7 @@ function renderChoreRow(chore) {
   row.appendChild(check);
 
   const main = el('button', 'chore-main');
+  main.dataset.fkey = `chore-main:${chore.id}`;
   main.setAttribute('aria-label', `Redigera ${chore.label}`);
   main.appendChild(el('span', 'chore-label', chore.label));
   const meta = el('span', 'chore-meta');

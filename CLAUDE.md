@@ -1,8 +1,9 @@
 # Mälarhöjdsvägen — regler för alla arbetssessioner
 
-Familjen Madestams veckoplanerare (PWA på GitHub Pages). Ägare: Andreas
-(GitHub: madestam). Familjen: Andreas, Jenny, Kasper, Felix, Ebba.
-Hundarna: Milano & Messi. All UI-text är på svenska.
+Familjeveckoplanerare (PWA på GitHub Pages). Ägare: madestam. Familjen:
+fem medlemmar och två hundar — riktiga namn finns ENDAST i det privata
+datarepot (`family.json` i madestam/malarhojdsvagen-data), aldrig här.
+All UI-text är på svenska.
 
 ## Arbetsflöde (viktigt)
 

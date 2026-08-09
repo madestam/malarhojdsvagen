@@ -1,6 +1,6 @@
 # Mälarhöjdsvägen 🐕🐕
 
-Familjens veckoplanerare — vem går ut med Milano & Messi, vem lagar middag,
+Familjens veckoplanerare — vem går ut med hundarna, vem lagar middag,
 vem handlar, och hur går det med jobbsökandet?
 
 **Appen:** https://madestam.github.io/malarhojdsvagen/

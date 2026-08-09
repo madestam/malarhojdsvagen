@@ -54,12 +54,14 @@ export class GithubStore {
       throw new NetworkError('Ingen kontakt med GitHub', { cause: err });
     }
     if (res.status === 401) throw new AuthError('Nyckeln avvisades (401)');
-    if (res.status === 403 || res.status === 429) {
-      if (res.headers.get('x-ratelimit-remaining') === '0') {
-        throw new RateLimitError('GitHubs gräns för anrop är nådd');
-      }
-      throw new AuthError('Åtkomst nekad (403)');
+    // 429 är alltid strypning; 403 är det när Retry-After eller nollad kvot
+    // följer med (GitHubs sekundära gränser). Övriga 403 = behörighetsfel.
+    if (res.status === 429 || (res.status === 403 && (
+      res.headers.get('retry-after') !== null || res.headers.get('x-ratelimit-remaining') === '0'
+    ))) {
+      throw new RateLimitError('GitHubs gräns för anrop är nådd');
     }
+    if (res.status === 403) throw new AuthError('Åtkomst nekad (403)');
     return res;
   }
 

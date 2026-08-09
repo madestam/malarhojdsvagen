@@ -9,6 +9,8 @@ import { toast } from '../ui/toast.js';
 
 let changes = null;        // null = ej hämtade, [] = tomt
 let changesError = false;
+let changesFetchedAt = 0;  // för 60 s-färskhet (matchar datalagrets commit-cache)
+let changesLoading = false;
 let keyStatus = null;      // null | 'checking' | 'ok' | 'fel: ...'
 
 function el(tag, className, text) {
@@ -47,6 +49,7 @@ function renderIdentity(s) {
   const row = el('div', 'identity-row');
   for (const m of s.family.members) {
     const chip = el('button', 'identity-chip');
+    chip.dataset.fkey = `identity:${m.id}`;
     chip.style.setProperty('--member-color', m.color);
     chip.setAttribute('aria-pressed', String(s.identity === m.id));
     const av = el('span', 'avatar', m.initial);
@@ -141,24 +144,35 @@ function renderChanges() {
   section.appendChild(el('h2', 'settings-heading', 'Senaste ändringar'));
   const card = el('div', 'card');
 
-  if (changes === null && !changesError) {
-    card.appendChild(el('p', 'caption', 'Hämtar…'));
+  const stale = changes === null || Date.now() - changesFetchedAt > 60_000;
+  if (!changesLoading && !changesError && stale) {
+    changesLoading = true;
     data.recentChanges(15)
       .then((list) => {
         changes = list;
         changesError = false;
+        changesFetchedAt = Date.now();
+        changesLoading = false;
         setState({});
       })
       .catch(() => {
         changesError = true;
+        changesFetchedAt = Date.now();
+        changesLoading = false;
         setState({});
       });
+  }
+
+  if (changes === null && !changesError) {
+    card.appendChild(el('p', 'caption', 'Hämtar…'));
   } else if (changesError) {
     card.appendChild(el('p', 'caption', 'Kunde inte hämta ändringar.'));
     const retry = el('button', 'btn-quiet btn-small', 'Försök igen');
+    retry.dataset.fkey = 'changes-retry';
     retry.addEventListener('click', () => {
       changes = null;
       changesError = false;
+      changesFetchedAt = 0;
       setState({});
     });
     card.appendChild(retry);

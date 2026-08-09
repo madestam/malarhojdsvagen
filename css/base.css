@@ -109,8 +109,10 @@ svg { display: block; }
 
 .view-title { font-size: 22px; font-weight: 700; }
 
-/* Banner (offline m.m.) */
+/* Banner (offline m.m.) — sticky så att den täcker safe-arean, och
+   vy-headern under släpper då sin egen safe-area-padding. */
 #banner:empty { display: none; }
+#banner { position: sticky; top: 0; z-index: 35; }
 .banner {
   max-width: 640px;
   margin-inline: auto;
@@ -120,7 +122,7 @@ svg { display: block; }
   color: var(--warning);
   background: var(--warning-soft);
 }
-.banner + * .view-header { padding-top: 10px; }
+#banner:not(:empty) + #view .view-header { padding-top: 10px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

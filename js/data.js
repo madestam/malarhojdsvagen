@@ -10,7 +10,9 @@ let actor = null; // { id, name }
 
 const changeCbs = new Set();
 const statusCbs = new Set();
-const queues = new Map();     // path -> senaste sparjobb (serialisering per fil)
+const queues = new Map();       // path -> senaste sparjobb (serialisering per fil)
+const pendingDocs = new Map();  // path -> projicerat dokument inkl. okvitterade mutationer
+const saveEpochs = new Map();   // path -> antal genomförda sparningar (för poll-race-vakt)
 let activePaths = new Set();  // pollas ofta (aktuell vecka, aktiv jobbfil)
 let pollTimer = null;
 let pollSoonTimer = null;
@@ -66,10 +68,21 @@ export function getCached(path) {
 }
 
 // Villkorad hämtning (ETag). Emittar 'change' bara när något faktiskt ändrats.
+// Vakt mot race: ett GET-svar som hämtades före/under en sparning på samma fil
+// får inte skriva över cachen med det gamla dokumentet (och gammalt sha).
 export async function refresh(path, { force = false } = {}) {
   const entry = fileCache.get(path);
+  const epoch = saveEpochs.get(path) || 0;
+  const jobAtStart = queues.get(path);
   try {
     const res = await store.getFile(path, { etag: force ? undefined : entry?.etag });
+    const raced = (saveEpochs.get(path) || 0) !== epoch
+      || queues.get(path) !== jobAtStart
+      || pendingDocs.has(path);
+    if (raced) {
+      emitStatus('online');
+      return getCached(path); // nästa poll hämtar rent
+    }
     if (res === null) {
       if (entry) fileCache.remove(path);
       emitChange(path, null);
@@ -91,11 +104,17 @@ export async function refresh(path, { force = false } = {}) {
 }
 
 // Optimistisk mutation: UI:t får ändringen direkt, sedan sparas den med
-// konflikt-omförsök. Vid fel rullas UI:t tillbaka till senast kända version.
+// konflikt-omförsök. Förhandsvisningen bygger på det PROJICERADE dokumentet
+// (inkl. tidigare okvitterade mutationer) så att snabba på-varandra-följande
+// ändringar inte studsar visuellt. Vid fel rullas UI:t tillbaka till senast
+// kända bekräftade version.
 export function mutate(path, mutation, { emptyDoc } = {}) {
-  const entry = fileCache.get(path);
-  const preview = structuredClone(entry ? entry.doc : emptyDoc);
+  const baseDoc = pendingDocs.has(path)
+    ? pendingDocs.get(path)
+    : (fileCache.get(path)?.doc ?? emptyDoc);
+  const preview = structuredClone(baseDoc);
   mutation.apply(preview);
+  pendingDocs.set(path, preview);
   emitChange(path, preview, { optimistic: true });
 
   const prev = queues.get(path) || Promise.resolve();
@@ -114,15 +133,24 @@ export function mutate(path, mutation, { emptyDoc } = {}) {
         if (actor) d.updatedBy = actor.id;
       },
     });
+    saveEpochs.set(path, (saveEpochs.get(path) || 0) + 1);
     fileCache.set(path, { etag: null, sha, doc, fetchedAt: new Date().toISOString() });
     commitsCache.list = null;
-    emitChange(path, doc);
+    // Emittera det bekräftade dokumentet först när kön är tömd — annars
+    // skulle det tillfälligt skriva över senare optimistiska ändringar.
+    if (queues.get(path) === job) {
+      pendingDocs.delete(path);
+      emitChange(path, doc);
+    }
     return doc;
   });
   queues.set(path, job);
   job.catch((err) => {
-    const e = fileCache.get(path);
-    emitChange(path, e ? e.doc : null, { rollback: true });
+    if (queues.get(path) === job) {
+      pendingDocs.delete(path);
+      const e = fileCache.get(path);
+      emitChange(path, e ? e.doc : null, { rollback: true });
+    }
     handleError(err);
   });
   return job;

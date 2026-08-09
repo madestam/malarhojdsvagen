@@ -6,6 +6,9 @@ let openCount = 0;
 export function openSheet({ title, build, onClose }) {
   const rootEl = document.getElementById('sheet-root');
   const invoker = document.activeElement;
+  // Om en omritning hunnit ersätta öppnarknappen hittar vi dess efterträdare
+  // via fokusnyckeln i stället.
+  const invokerKey = invoker instanceof HTMLElement ? invoker.dataset.fkey || null : null;
 
   const backdrop = document.createElement('div');
   backdrop.className = 'sheet-backdrop';
@@ -46,7 +49,11 @@ export function openSheet({ title, build, onClose }) {
     setTimeout(() => backdrop.remove(), 200);
     document.removeEventListener('keydown', onKey, true);
     if (onClose) onClose();
-    if (invoker && invoker.isConnected && typeof invoker.focus === 'function') invoker.focus();
+    if (invoker && invoker.isConnected && typeof invoker.focus === 'function') {
+      invoker.focus();
+    } else if (invokerKey) {
+      document.querySelector(`[data-fkey="${CSS.escape(invokerKey)}"]`)?.focus({ preventScroll: true });
+    }
   }
 
   function onKey(e) {

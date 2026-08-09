@@ -97,6 +97,7 @@ function renderHeader(s) {
   const nav = el('div', 'week-nav');
   const prev = el('button', 'week-nav-btn', '‹');
   prev.setAttribute('aria-label', 'Föregående vecka');
+  prev.dataset.fkey = 'week-prev';
   prev.addEventListener('click', () => setWeek(addWeeks(s.weekId, -1)));
 
   const titleWrap = el('div', 'week-title-wrap');
@@ -106,6 +107,7 @@ function renderHeader(s) {
 
   const next = el('button', 'week-nav-btn', '›');
   next.setAttribute('aria-label', 'Nästa vecka');
+  next.dataset.fkey = 'week-next';
   next.addEventListener('click', () => setWeek(addWeeks(s.weekId, 1)));
 
   nav.append(prev, titleWrap, next);
@@ -113,6 +115,7 @@ function renderHeader(s) {
 
   if (s.weekId !== currentWeekId()) {
     const todayBtn = el('button', 'week-today-btn', 'Idag');
+    todayBtn.dataset.fkey = 'week-today';
     todayBtn.addEventListener('click', goToCurrentWeek);
     header.appendChild(todayBtn);
   }
@@ -141,6 +144,9 @@ function renderLoadChips(s) {
   const wrap = el('div', 'week-loads');
   for (const m of s.family.members) {
     const chip = el('span', 'load-chip' + (counts[m.id] === 0 ? ' dim' : ''));
+    // role=img gör att aria-label faktiskt läses upp (aria-label på en
+    // generisk span ignoreras av flera skärmläsare).
+    chip.setAttribute('role', 'img');
     chip.setAttribute('aria-label', `${m.name}: ${counts[m.id]} pass denna vecka`);
     const av = el('span', 'avatar', m.initial);
     av.style.setProperty('--member-color', m.color);
@@ -158,6 +164,7 @@ function renderNoteRow(s) {
   const note = s.week?.note || '';
   const row = el('div', 'week-note-row');
   const btn = el('button', '');
+  btn.dataset.fkey = 'week-note';
   if (note) {
     btn.appendChild(el('span', 'week-note-text', '📝 ' + note));
     btn.setAttribute('aria-label', 'Ändra veckans anteckning');
@@ -266,6 +273,7 @@ function renderDayCard(s, week, dayKey, dateUTC, todayStr, slots) {
     const ids = day.slots[slot.id] || [];
     const row = el('button', 'slot-row');
     row.type = 'button';
+    row.dataset.fkey = `slot:${dayKey}:${slot.id}`;
 
     const names = ids.map((id) => memberById(id)?.name || id);
     const dogSubtitle = slot.kind === 'dog' ? 'promenad' : '';

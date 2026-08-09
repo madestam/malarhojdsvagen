@@ -120,6 +120,11 @@ export function mutSetWeekNote({ weekId, note, actorName }) {
 }
 
 export function mutCopyWeekFrom({ weekId, fromWeekId, fromDoc, actorName }) {
+  // Nya syssle-id:n bestäms EN gång här i fabriken — apply() körs flera
+  // gånger (förhandsvisning, sparning, konflikt-omförsök) och måste ge
+  // exakt samma resultat varje gång, annars pekar köade uppföljnings-
+  // mutationer på id:n som aldrig sparades.
+  const copiedChores = (fromDoc.chores || []).map((c) => ({ ...c, id: randomId(4), done: false }));
   return {
     apply(doc) {
       for (const k of DAY_KEYS) {
@@ -128,7 +133,7 @@ export function mutCopyWeekFrom({ weekId, fromWeekId, fromDoc, actorName }) {
           Object.entries(fromSlots).map(([slotId, ids]) => [slotId, [...ids]])
         );
       }
-      doc.chores = (fromDoc.chores || []).map((c) => ({ ...c, id: randomId(4), done: false }));
+      doc.chores = copiedChores.map((c) => ({ ...c }));
     },
     message: `${weekPrefix(weekId)}: schema kopierat från ${weekPrefix(fromWeekId)} ${by(actorName)}`,
   };

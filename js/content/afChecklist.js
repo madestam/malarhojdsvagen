@@ -106,7 +106,7 @@ export const PLATSBANKEN_URL = 'https://arbetsformedlingen.se/platsbanken';
 
 // Diskret vuxen peppning — roteras deterministiskt på antal ansökningar.
 export const UPPMUNTRAN_SOKT = [
-  'Inloggad. Bra jobbat!',
+  'Loggad. Bra jobbat!',
   'En till på listan – bra tempo.',
   'Klockrent. Vidare till nästa.',
 ];

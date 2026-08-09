@@ -144,6 +144,10 @@ export function dayOfMonthStockholm(now = new Date()) {
 
 // "för 2 timmar sedan", "i går", "nyss"
 const relFmt = new Intl.RelativeTimeFormat('sv', { numeric: 'auto' });
+// Riktiga tidsstämplar (commits) formatteras i Stockholmstid — shortFmt ovan
+// är enbart för appens UTC-midnattsdatum.
+const wallClockDayFmt = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', timeZone: TZ });
+const wallClockYearFmt = new Intl.DateTimeFormat('sv-SE', { year: 'numeric', timeZone: TZ });
 
 export function relativeTime(isoString, now = new Date()) {
   const then = new Date(isoString);
@@ -153,5 +157,6 @@ export function relativeTime(isoString, now = new Date()) {
   if (abs < 3600) return relFmt.format(Math.trunc(diffSec / 60), 'minute');
   if (abs < 86400) return relFmt.format(Math.trunc(diffSec / 3600), 'hour');
   if (abs < 86400 * 14) return relFmt.format(Math.trunc(diffSec / 86400), 'day');
-  return shortFmt.format(then).replace(/\.$/, '') + (then.getUTCFullYear() !== now.getUTCFullYear() ? ' ' + then.getUTCFullYear() : '');
+  const y = wallClockYearFmt.format(then);
+  return wallClockDayFmt.format(then).replace(/\.$/, '') + (y !== wallClockYearFmt.format(now) ? ' ' + y : '');
 }
