@@ -179,7 +179,7 @@ function openNoteSheet(existing) {
       const ta = document.createElement('textarea');
       ta.className = 'textarea';
       ta.id = 'week-note-input';
-      ta.placeholder = 'T.ex. "Ebba på läger ons–fre"';
+      ta.placeholder = 'T.ex. "Mormor kommer på torsdag"';
       ta.value = existing;
       field.append(label, ta);
 
