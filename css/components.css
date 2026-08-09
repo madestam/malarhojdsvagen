@@ -1,5 +1,350 @@
-/* Återanvändbara komponenter — fylls på under bygget. */
-.placeholder {
-  margin-top: 24px;
+/* Återanvändbara komponenter. */
+
+.placeholder { margin-top: 24px; color: var(--text-secondary); }
+
+/* --- Kort --- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  margin-top: 12px;
+}
+.card-title { font-size: 17px; font-weight: 600; }
+.card-sub { font-size: 13px; color: var(--text-secondary); }
+
+/* --- Knappar --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 8px 18px;
+  border-radius: var(--radius-chip);
+  font-weight: 600;
+  font-size: 15px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: 1px solid transparent;
+}
+.btn:active { transform: scale(0.98); }
+.btn[disabled] { opacity: 0.5; pointer-events: none; }
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--accent);
+  border-color: var(--border);
+}
+.btn-quiet {
+  background: none;
+  color: var(--accent);
+  border: none;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  font-weight: 600;
+}
+.btn-danger-quiet { color: var(--danger); }
+.btn-small { min-height: 36px; padding: 4px 14px; font-size: 14px; }
+
+/* --- Avatarer & chips --- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--member-color, var(--accent));
+  color: #fff;
+  font-weight: 700;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border-radius: var(--radius-chip);
+  border: 1.5px solid var(--member-color, var(--border));
+  background: color-mix(in srgb, var(--member-color, var(--bg-card)) 12%, var(--bg-card));
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ghost-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: var(--radius-chip);
+  border: 1.5px dashed var(--border);
   color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* --- Väljargrid i sheets --- */
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+
+.picker-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px 10px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  min-height: 96px;
+}
+.picker-chip .picker-name { font-size: 13px; font-weight: 600; }
+.picker-chip .picker-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--member-color, var(--accent));
+  color: #fff;
+}
+.picker-chip[aria-pressed="true"] {
+  border-color: var(--member-color, var(--accent));
+  background: color-mix(in srgb, var(--member-color, var(--accent)) 10%, var(--bg-card));
+}
+.picker-chip[aria-pressed="true"] .picker-check { display: inline-flex; }
+
+@keyframes picker-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.picker-shake { animation: picker-shake 0.25s; }
+
+/* --- Bottom sheet --- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(20, 15, 10, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fade-in 0.18s;
+}
+.sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 18px 18px 0 0;
+  padding: 6px 16px calc(16px + var(--safe-bottom));
+  animation: sheet-up 0.22s ease-out;
+}
+.sheet-closing { opacity: 0; transition: opacity 0.18s; }
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+.sheet-title { font-size: 17px; font-weight: 700; }
+.sheet-close {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+}
+body.sheet-open { overflow: hidden; }
+
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Toast --- */
+#toast-root {
+  position: fixed;
+  bottom: calc(88px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  width: max-content;
+  max-width: min(92vw, 480px);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 18px;
+  border-radius: var(--radius-chip);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  animation: fade-in 0.2s;
+}
+.toast-out { opacity: 0; transition: opacity 0.25s; }
+.toast-action {
+  color: var(--accent-soft);
+  font-weight: 700;
+  text-transform: none;
+  min-height: 32px;
+}
+@media (prefers-color-scheme: dark) {
+  .toast { background: #EDE6DC; color: #1C1917; }
+  .toast-action { color: #C05621; }
+}
+
+/* --- Statuspiller (ansökningar) --- */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+.status-att-soka { background: none; color: var(--st-att-soka); border: 1.5px solid currentColor; }
+.status-sokt { background: var(--st-sokt); }
+.status-intervju { background: var(--st-intervju); }
+.status-nej-tack { background: var(--st-nej-tack); }
+.status-erbjudande { background: var(--st-erbjudande); }
+@media (prefers-color-scheme: dark) {
+  .status-sokt, .status-intervju, .status-nej-tack, .status-erbjudande { color: #141110; }
+}
+
+/* --- Segmenterad kontroll --- */
+.segmented {
+  display: flex;
+  background: var(--bg-sunken);
+  border-radius: var(--radius-chip);
+  padding: 3px;
+  gap: 2px;
+}
+.segmented button {
+  flex: 1;
+  min-height: 38px;
+  border-radius: var(--radius-chip);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+/* --- Filterchips --- */
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.filter-chip {
+  min-height: 34px;
+  padding: 4px 14px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.filter-chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* --- Formulär --- */
+.field { margin-top: 14px; }
+.field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+.input, .textarea, select.input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  font-size: 16px; /* ≥16px: förhindrar Safari-zoom vid fokus */
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text);
+}
+.input:focus-visible, .textarea:focus-visible { outline: none; border-color: var(--accent); }
+.textarea { min-height: 76px; resize: vertical; }
+.input-row { display: flex; gap: 8px; align-items: center; }
+.input-row .input { flex: 1; }
+
+/* --- Infobanner --- */
+.notice {
+  display: block;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--warning);
+  background: var(--warning-soft);
+  font-size: 14px;
+}
+.notice-title { font-weight: 700; margin-bottom: 2px; }
+
+/* --- Progressbar --- */
+.progress {
+  height: 10px;
+  border-radius: var(--radius-chip);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.progress > div {
+  height: 100%;
+  border-radius: var(--radius-chip);
+  background: var(--member-color, var(--accent));
+  transition: width 0.3s ease;
+}
+
+/* --- Skeletons --- */
+@keyframes shimmer { from { opacity: 0.55; } 50% { opacity: 1; } to { opacity: 0.55; } }
+.skeleton {
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  animation: shimmer 1.4s infinite;
+  border: 1px solid var(--border);
+}
+
+/* --- Tom-lägen --- */
+.empty-state {
+  text-align: center;
+  padding: 28px 16px;
+}
+.empty-emoji { font-size: 34px; margin-bottom: 6px; }
+.empty-title { font-size: 17px; font-weight: 700; }
+.empty-body { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+.empty-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; align-items: center; }
+
+/* --- Dev-badge --- */
+.dev-badge {
+  position: fixed;
+  top: max(8px, var(--safe-top));
+  right: 10px;
+  z-index: 90;
+  padding: 3px 10px;
+  border-radius: var(--radius-chip);
+  background: var(--warning);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
 }
