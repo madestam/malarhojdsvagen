@@ -25,6 +25,7 @@ const bannerEl = document.getElementById('banner');
 let lastRoute = null;
 let keyGateOpen = false;
 let devStore = null;
+let appWired = false; // skydd mot dubbla lyssnare när startApp körs igen (nyckelbyte)
 
 function renderBanner() {
   const s = getState();
@@ -166,7 +167,6 @@ function startApp(dev, familyDoc = null) {
   document.getElementById('overlay').innerHTML = '';
   const store = makeStore(dev);
   data.initData({ store, actor: null });
-  wireDataEvents();
 
   const weekId = currentWeekId();
   fileCache.purgeWeeks([addWeeks(weekId, -2), addWeeks(weekId, -1), weekId, addWeeks(weekId, 1), addWeeks(weekId, 2)]);
@@ -176,8 +176,12 @@ function startApp(dev, familyDoc = null) {
     fileCache.set('family.json', { etag: null, sha: null, doc: familyDoc, fetchedAt: new Date().toISOString() });
   }
 
-  initRouter();
-  subscribe(renderApp);
+  if (!appWired) {
+    appWired = true;
+    wireDataEvents();
+    initRouter();
+    subscribe(renderApp);
+  }
   appEl.hidden = false;
   renderDevBadge(dev);
   renderApp();
