@@ -188,6 +188,9 @@ function renderMonthCard(s) {
 
   const counts = countDogWalksForMonth(s.family, weekDocs, month);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const avg = total / Math.max(1, s.family.members.length);
+  const values = Object.values(counts);
+  const spread = values.length ? Math.max(...values) - Math.min(...values) : 0;
 
   const card = el('section', 'card');
   const head = el('div', 'day-head');
@@ -198,24 +201,45 @@ function renderMonthCard(s) {
   const row = el('div', 'week-loads');
   row.style.justifyContent = 'flex-start';
   for (const m of s.family.members) {
-    const chip = el('span', 'load-chip' + (counts[m.id] === 0 ? ' dim' : ''));
+    const count = counts[m.id];
+    // Avvikelse mot snittet hittills i månaden — så syns direkt vem som
+    // ligger före eller efter, utan huvudräkning.
+    const delta = Math.round(count - avg);
+    const showDelta = total > 0 && delta !== 0;
+    const chip = el('span', 'load-chip' + (count === 0 ? ' dim' : ''));
     chip.setAttribute('role', 'img');
-    chip.setAttribute('aria-label', `${m.name}: ${counts[m.id]} hundpass i ${monthNameOf(month)}`);
+    chip.setAttribute('aria-label',
+      `${m.name}: ${count} hundpass i ${monthNameOf(month)}`
+      + (showDelta ? `, ${Math.abs(delta)} ${delta > 0 ? 'över' : 'under'} snittet` : ''));
     const av = el('span', 'avatar', m.initial);
     av.style.setProperty('--member-color', m.color);
     av.style.width = '26px';
     av.style.height = '26px';
     av.style.fontSize = '12px';
     av.setAttribute('aria-hidden', 'true');
-    chip.append(av, el('span', '', String(counts[m.id])));
+    chip.append(av, el('span', '', String(count)));
+    if (showDelta) {
+      const d = el('span', 'load-delta', (delta > 0 ? '+' : '−') + Math.abs(delta));
+      d.setAttribute('aria-hidden', 'true');
+      chip.appendChild(d);
+    }
     row.appendChild(chip);
   }
   card.appendChild(row);
 
-  card.appendChild(el('p', 'caption',
-    missing > 0
-      ? 'Räknar ihop månadens alla veckor…'
-      : 'Fyra hundpass om dagen — målet är att alla ligger ungefär lika när månaden är slut.'));
+  // Mjuk signal — bara när spridningen blivit stor på riktigt (> 8 pass,
+  // motsvarande två hela dagar). Ingen pekas ut; siffrorna talar själva.
+  let captionText;
+  if (missing > 0) {
+    captionText = 'Räknar ihop månadens alla veckor…';
+  } else if (spread > 8) {
+    captionText = 'Det skiljer en del just nu — snegla på fördelningen när ni planerar nästa vecka.';
+  } else {
+    captionText = 'Fyra hundpass om dagen — målet är att alla ligger ungefär lika när månaden är slut.';
+  }
+  const caption = el('p', 'caption', captionText);
+  if (missing === 0 && spread > 8) caption.className = 'caption caption-warn';
+  card.appendChild(caption);
   return card;
 }
 

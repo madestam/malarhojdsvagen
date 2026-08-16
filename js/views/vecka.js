@@ -126,23 +126,30 @@ function renderHeader(s) {
   return header;
 }
 
-// Veckans fördelning: antal pass per person.
+// Veckans fördelning: antal HUNDPASS per person — samma mått som
+// månadskortet på Idag, så att vecko- och månadssiffran talar samma språk.
 function renderLoadChips(s) {
+  const dogSlotIds = new Set((s.family.slots || []).filter((x) => x.kind === 'dog').map((x) => x.id));
   const counts = Object.fromEntries(s.family.members.map((m) => [m.id, 0]));
   for (const day of Object.values(s.week.days || {})) {
-    for (const ids of Object.values(day.slots || {})) {
+    for (const [slotId, ids] of Object.entries(day.slots || {})) {
+      if (!dogSlotIds.has(slotId)) continue;
       for (const id of ids || []) {
         if (id in counts) counts[id]++;
       }
     }
   }
   const wrap = el('div', 'week-loads');
+  const marker = el('span', '', '🐕');
+  marker.setAttribute('aria-hidden', 'true');
+  marker.style.fontSize = '13px';
+  wrap.appendChild(marker);
   for (const m of s.family.members) {
     const chip = el('span', 'load-chip' + (counts[m.id] === 0 ? ' dim' : ''));
     // role=img gör att aria-label faktiskt läses upp (aria-label på en
     // generisk span ignoreras av flera skärmläsare).
     chip.setAttribute('role', 'img');
-    chip.setAttribute('aria-label', `${m.name}: ${counts[m.id]} pass denna vecka`);
+    chip.setAttribute('aria-label', `${m.name}: ${counts[m.id]} hundpass denna vecka`);
     const av = el('span', 'avatar', m.initial);
     av.style.setProperty('--member-color', m.color);
     av.style.width = '22px';
