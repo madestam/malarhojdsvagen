@@ -1,7 +1,7 @@
 // Service worker: cache-first för appens egna filer (skalet), aldrig för
 // api.github.com — token-försedda anrop och familjedata får inte hamna i
 // någon cache. Bumpa CACHE_VERSION vid varje deploy.
-const CACHE_VERSION = 'mhv-shell-v3';
+const CACHE_VERSION = 'mhv-shell-v4';
 
 const ASSETS = [
   './',

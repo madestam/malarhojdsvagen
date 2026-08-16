@@ -48,8 +48,8 @@ export function normalizeWeek(doc, weekId) {
       note: (day && typeof day.note === 'string') ? day.note : '',
       slots: (day && day.slots && typeof day.slots === 'object') ? { ...day.slots } : {},
     };
-    if (day && day.dogChoices && typeof day.dogChoices === 'object' && Object.keys(day.dogChoices).length) {
-      out.days[k].dogChoices = { ...day.dogChoices };
+    if (day && day.slotTimes && typeof day.slotTimes === 'object' && Object.keys(day.slotTimes).length) {
+      out.days[k].slotTimes = { ...day.slotTimes };
     }
   }
   out.chores = Array.isArray(doc.chores) ? doc.chores.map((c) => ({ ...c })) : [];
@@ -99,38 +99,51 @@ function ensureDay(doc, dayKey) {
   return doc.days[dayKey];
 }
 
-// --- Hundar: vilka hundar går en viss promenad en viss dag? ---
-// En slot kan ha fasta hundar (slot.dogs). En hund kan dessutom ha ett
-// dagligt val (dog.choice = { slots: [...], default: slotId }) — t.ex. en
-// äldre hund som bara går EN tur om dagen, lunch eller kväll. Dagens val
-// lagras i veckofilen som days.<dag>.dogChoices = { hundId: slotId };
+// --- Hundar & tider: varje hund har sin egen promenadrad ---
+// En slot kan ha fasta hundar (slot.dogs) — t.ex. Milanos tre turer.
+// En slot kan dessutom ha ett dagligt TIDSVAL (slot.timeChoice =
+// { options: [slotId, ...], default: slotId }) — t.ex. Messis enda tur som
+// går antingen lunch eller kväll och visas under den valda tidsraden.
+// Dagens val lagras i veckofilen som days.<dag>.slotTimes = { slotId: tid };
 // saknas posten gäller standardvalet.
 
-export function dogChoiceFor(day, dog) {
-  if (!dog.choice) return null;
-  const override = day?.dogChoices?.[dog.id];
-  return override && dog.choice.slots.includes(override) ? override : dog.choice.default;
+export function slotDogs(family, slot) {
+  if (!slot || slot.kind !== 'dog') return [];
+  const ids = slot.dogs || (family.dogs || []).map((d) => d.id);
+  return (family.dogs || []).filter((d) => ids.includes(d.id));
 }
 
-export function dogsForSlot(family, day, slotId) {
-  const slot = (family.slots || []).find((s) => s.id === slotId);
-  if (!slot || slot.kind !== 'dog') return [];
-  // Bakåtkompatibelt: utan dogs-fält går alla hundar utan eget val på alla turer.
-  const fixed = slot.dogs || (family.dogs || []).filter((d) => !d.choice).map((d) => d.id);
+export function slotTimeFor(slot, day) {
+  if (!slot.timeChoice) return null;
+  const override = day?.slotTimes?.[slot.id];
+  return override && slot.timeChoice.options.includes(override) ? override : slot.timeChoice.default;
+}
+
+// Dagens rader i visningsordning: slots med tidsval läggs direkt efter den
+// tidsrad de valt för dagen.
+export function displaySlots(family, day) {
+  const sorted = [...(family.slots || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const anchored = sorted.filter((s) => s.timeChoice);
+  const base = sorted.filter((s) => !s.timeChoice);
   const result = [];
-  for (const dog of family.dogs || []) {
-    if (fixed.includes(dog.id)) result.push(dog);
-    else if (dog.choice && dogChoiceFor(day, dog) === slotId) result.push(dog);
+  for (const s of base) {
+    result.push(s);
+    for (const a of anchored) {
+      if (slotTimeFor(a, day) === s.id) result.push(a);
+    }
+  }
+  for (const a of anchored) {
+    if (!result.includes(a)) result.push(a);
   }
   return result;
 }
 
 // --- Veckomutationer ---
 
-// dogUpdates (valfritt): { hundId: slotId | null } — null rensar dagens
-// avvikelse (standardvalet gäller igen). suffix läggs till i commit-
-// meddelandet, t.ex. "; Messi → Kväll".
-export function mutSetSlot({ weekId, dayKey, dayLabelShort, slotId, slotLabel, memberIds, memberNames, actorName, dogUpdates, suffix = '' }) {
+// slotTimes (valfritt): { slotId: tidSlotId | null } — null rensar dagens
+// avvikelse (standardtiden gäller igen). suffix läggs till i commit-
+// meddelandet, t.ex. "; går kväll".
+export function mutSetSlot({ weekId, dayKey, dayLabelShort, slotId, slotLabel, memberIds, memberNames, actorName, slotTimes, suffix = '' }) {
   const what = memberNames.length
     ? `${slotLabel} ${dayLabelShort}: ${memberNames.join(' + ')}`
     : (suffix ? `${slotLabel} ${dayLabelShort}` : `${slotLabel} ${dayLabelShort} rensad`);
@@ -138,13 +151,13 @@ export function mutSetSlot({ weekId, dayKey, dayLabelShort, slotId, slotLabel, m
     apply(doc) {
       const day = ensureDay(doc, dayKey);
       day.slots[slotId] = [...memberIds];
-      if (dogUpdates) {
-        if (!day.dogChoices) day.dogChoices = {};
-        for (const [dogId, chosen] of Object.entries(dogUpdates)) {
-          if (chosen) day.dogChoices[dogId] = chosen;
-          else delete day.dogChoices[dogId];
+      if (slotTimes) {
+        if (!day.slotTimes) day.slotTimes = {};
+        for (const [id, time] of Object.entries(slotTimes)) {
+          if (time) day.slotTimes[id] = time;
+          else delete day.slotTimes[id];
         }
-        if (Object.keys(day.dogChoices).length === 0) delete day.dogChoices;
+        if (Object.keys(day.slotTimes).length === 0) delete day.slotTimes;
       }
     },
     message: `${weekPrefix(weekId)}: ${what}${suffix} ${by(actorName)}`,
@@ -174,10 +187,10 @@ export function mutCopyWeekFrom({ weekId, fromWeekId, fromDoc, actorName }) {
         day.slots = Object.fromEntries(
           Object.entries(fromDay.slots || {}).map(([slotId, ids]) => [slotId, [...ids]])
         );
-        if (fromDay.dogChoices && Object.keys(fromDay.dogChoices).length) {
-          day.dogChoices = { ...fromDay.dogChoices };
+        if (fromDay.slotTimes && Object.keys(fromDay.slotTimes).length) {
+          day.slotTimes = { ...fromDay.slotTimes };
         } else {
-          delete day.dogChoices;
+          delete day.slotTimes;
         }
       }
       doc.chores = copiedChores.map((c) => ({ ...c }));

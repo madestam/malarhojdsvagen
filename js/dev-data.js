@@ -16,13 +16,15 @@ export const DEV_FAMILY = {
   ],
   dogs: [
     { id: 'rex',  name: 'Rex' },
-    { id: 'fido', name: 'Fido', choice: { slots: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
+    { id: 'fido', name: 'Fido' },
   ],
   slots: [
     { id: 'hund-morgon', label: 'Morgonpromenad', shortLabel: 'Morgon', kind: 'dog',  order: 1, dogs: ['rex'] },
     { id: 'hund-lunch',  label: 'Lunchpromenad',  shortLabel: 'Lunch',  kind: 'dog',  order: 2, dogs: ['rex'] },
     { id: 'hund-kvall',  label: 'Kvällspromenad', shortLabel: 'Kväll',  kind: 'dog',  order: 3, dogs: ['rex'] },
-    { id: 'matlagning',  label: 'Middag',         shortLabel: 'Middag', kind: 'cook', order: 4 },
+    { id: 'hund-fido',   label: 'Fidos promenad', shortLabel: 'Fido',   kind: 'dog',  order: 4, dogs: ['fido'],
+      timeChoice: { options: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
+    { id: 'matlagning',  label: 'Middag',         shortLabel: 'Middag', kind: 'cook', order: 5 },
   ],
   choreTemplates: [
     { id: 'handla-mat',  label: 'Handla mat' },
@@ -39,8 +41,8 @@ export function devSeedWeek(weekId) {
     week: weekId,
     note: 'Demovecka — allt här är påhittat',
     days: {
-      mon: { note: '', slots: { 'hund-morgon': ['anna'], 'hund-lunch': ['bosse'], 'hund-kvall': ['cilla', 'david'], matlagning: ['elsa'] } },
-      tue: { note: '', slots: { 'hund-morgon': ['david'], matlagning: ['anna'] } },
+      mon: { note: '', slots: { 'hund-morgon': ['anna'], 'hund-lunch': ['bosse'], 'hund-fido': ['elsa'], 'hund-kvall': ['cilla', 'david'], matlagning: ['elsa'] } },
+      tue: { note: '', slots: { 'hund-morgon': ['david'], 'hund-fido': ['bosse'], matlagning: ['anna'] }, slotTimes: { 'hund-fido': 'hund-kvall' } },
       wed: { note: '', slots: {} },
       thu: { note: '', slots: { 'hund-kvall': ['elsa'] } },
       fri: { note: '', slots: {} },

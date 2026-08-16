@@ -7,21 +7,23 @@ import {
   emptyWeek, normalizeWeek, emptyJobs, normalizeJobs, randomId,
   mutSetSlot, mutCopyWeekFrom, mutChoreAdd, mutChoreToggle, mutChoreDelete,
   mutJobsToggleStep, mutJobsAddApplication, mutJobsUpdateApplication, mutJobsMarkReported,
-  dogChoiceFor, dogsForSlot,
+  slotDogs, slotTimeFor, displaySlots,
 } from '../js/models.js';
 
-// Fiktiv familj för hundlogiken: Rex går alla turer, Fido en tur om dagen
-// (lunch eller kväll, standard lunch).
+// Fiktiv familj för hundlogiken: Rex går alla tre turer, Fido har en egen
+// tur om dagen (lunch eller kväll, standard lunch) med egen personrad.
 const DOG_FAMILY = {
   dogs: [
     { id: 'rex', name: 'Rex' },
-    { id: 'fido', name: 'Fido', choice: { slots: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
+    { id: 'fido', name: 'Fido' },
   ],
   slots: [
-    { id: 'hund-morgon', kind: 'dog', dogs: ['rex'] },
-    { id: 'hund-lunch', kind: 'dog', dogs: ['rex'] },
-    { id: 'hund-kvall', kind: 'dog', dogs: ['rex'] },
-    { id: 'matlagning', kind: 'cook' },
+    { id: 'hund-morgon', shortLabel: 'Morgon', kind: 'dog', order: 1, dogs: ['rex'] },
+    { id: 'hund-lunch', shortLabel: 'Lunch', kind: 'dog', order: 2, dogs: ['rex'] },
+    { id: 'hund-kvall', shortLabel: 'Kväll', kind: 'dog', order: 3, dogs: ['rex'] },
+    { id: 'hund-fido', shortLabel: 'Fido', kind: 'dog', order: 4, dogs: ['fido'],
+      timeChoice: { options: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
+    { id: 'matlagning', shortLabel: 'Middag', kind: 'cook', order: 5 },
   ],
 };
 
@@ -139,68 +141,61 @@ test('jobbmutationer: checklista, rapport och ansökningar', () => {
   assert.match(upd.message, /→ Intervju/);
 });
 
-test('hundval: standard, avvikelse och ogiltig avvikelse', () => {
-  const fido = DOG_FAMILY.dogs[1];
-  assert.equal(dogChoiceFor({}, fido), 'hund-lunch'); // standard
-  assert.equal(dogChoiceFor({ dogChoices: { fido: 'hund-kvall' } }, fido), 'hund-kvall');
-  assert.equal(dogChoiceFor({ dogChoices: { fido: 'hund-morgon' } }, fido), 'hund-lunch'); // ogiltig → standard
-  assert.equal(dogChoiceFor({}, DOG_FAMILY.dogs[0]), null); // Rex har inget val
+test('slotDogs och slotTimeFor: standard, avvikelse och ogiltig avvikelse', () => {
+  const fidoSlot = DOG_FAMILY.slots.find((x) => x.id === 'hund-fido');
+  assert.deepEqual(slotDogs(DOG_FAMILY, fidoSlot).map((d) => d.name), ['Fido']);
+  assert.deepEqual(slotDogs(DOG_FAMILY, DOG_FAMILY.slots[0]).map((d) => d.name), ['Rex']);
+  assert.deepEqual(slotDogs(DOG_FAMILY, DOG_FAMILY.slots.find((x) => x.id === 'matlagning')), []);
+
+  assert.equal(slotTimeFor(fidoSlot, {}), 'hund-lunch'); // standard
+  assert.equal(slotTimeFor(fidoSlot, { slotTimes: { 'hund-fido': 'hund-kvall' } }), 'hund-kvall');
+  assert.equal(slotTimeFor(fidoSlot, { slotTimes: { 'hund-fido': 'hund-morgon' } }), 'hund-lunch'); // ogiltig → standard
+  assert.equal(slotTimeFor(DOG_FAMILY.slots[0], {}), null); // vanlig rad har inget tidsval
 });
 
-test('dogsForSlot: Rex alla turer, Fido bara sin valda', () => {
-  const day = {};
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-morgon').map((d) => d.name), ['Rex']);
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-lunch').map((d) => d.name), ['Rex', 'Fido']);
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-kvall').map((d) => d.name), ['Rex']);
-  const moved = { dogChoices: { fido: 'hund-kvall' } };
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, moved, 'hund-lunch').map((d) => d.name), ['Rex']);
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, moved, 'hund-kvall').map((d) => d.name), ['Rex', 'Fido']);
-  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'matlagning'), []);
+test('displaySlots ankrar Fidos rad under vald tid', () => {
+  const order = (day) => displaySlots(DOG_FAMILY, day).map((s) => s.id);
+  assert.deepEqual(order({}), ['hund-morgon', 'hund-lunch', 'hund-fido', 'hund-kvall', 'matlagning']);
+  assert.deepEqual(order({ slotTimes: { 'hund-fido': 'hund-kvall' } }),
+    ['hund-morgon', 'hund-lunch', 'hund-kvall', 'hund-fido', 'matlagning']);
 });
 
-test('dogsForSlot bakåtkompatibelt: utan dogs-fält går alla hundar utan val på alla turer', () => {
-  const oldFamily = {
-    dogs: [{ id: 'rex', name: 'Rex' }, { id: 'fido', name: 'Fido' }],
-    slots: [{ id: 'hund-morgon', kind: 'dog' }],
-  };
-  assert.deepEqual(dogsForSlot(oldFamily, {}, 'hund-morgon').map((d) => d.name), ['Rex', 'Fido']);
-});
-
-test('mutSetSlot med dogUpdates sätter och rensar dagens hundval', () => {
+test('mutSetSlot med slotTimes sätter och rensar dagens tidsval', () => {
   const doc = emptyWeek('2026-W33');
   const move = mutSetSlot({
     weekId: '2026-W33', dayKey: 'wed', dayLabelShort: 'ons',
-    slotId: 'hund-kvall', slotLabel: 'Kvällspromenad',
+    slotId: 'hund-fido', slotLabel: 'Fidos promenad',
     memberIds: ['anna'], memberNames: ['Anna'], actorName: 'Anna',
-    dogUpdates: { fido: 'hund-kvall' }, suffix: '; Fido → Kväll',
+    slotTimes: { 'hund-fido': 'hund-kvall' }, suffix: '; går kväll',
   });
   move.apply(doc);
-  assert.deepEqual(doc.days.wed.dogChoices, { fido: 'hund-kvall' });
-  assert.equal(move.message, 'v33 2026: Kvällspromenad ons: Anna; Fido → Kväll (ändrat av Anna)');
+  assert.deepEqual(doc.days.wed.slotTimes, { 'hund-fido': 'hund-kvall' });
+  assert.deepEqual(doc.days.wed.slots['hund-fido'], ['anna']);
+  assert.equal(move.message, 'v33 2026: Fidos promenad ons: Anna; går kväll (ändrat av Anna)');
 
   // null = tillbaka till standard → avvikelsen tas bort helt
   mutSetSlot({
     weekId: '2026-W33', dayKey: 'wed', dayLabelShort: 'ons',
-    slotId: 'hund-lunch', slotLabel: 'Lunchpromenad',
-    memberIds: [], memberNames: [], actorName: 'Anna',
-    dogUpdates: { fido: null },
+    slotId: 'hund-fido', slotLabel: 'Fidos promenad',
+    memberIds: ['anna'], memberNames: ['Anna'], actorName: 'Anna',
+    slotTimes: { 'hund-fido': null },
   }).apply(doc);
-  assert.equal('dogChoices' in doc.days.wed, false);
+  assert.equal('slotTimes' in doc.days.wed, false);
 });
 
-test('mutCopyWeekFrom tar med dagens hundval', () => {
+test('mutCopyWeekFrom tar med dagens tidsval', () => {
   const from = emptyWeek('2026-W33');
-  from.days.thu.dogChoices = { fido: 'hund-kvall' };
+  from.days.thu.slotTimes = { 'hund-fido': 'hund-kvall' };
   const doc = emptyWeek('2026-W34');
   mutCopyWeekFrom({ weekId: '2026-W34', fromWeekId: '2026-W33', fromDoc: from, actorName: 'Anna' }).apply(doc);
-  assert.deepEqual(doc.days.thu.dogChoices, { fido: 'hund-kvall' });
-  assert.equal('dogChoices' in doc.days.mon, false);
+  assert.deepEqual(doc.days.thu.slotTimes, { 'hund-fido': 'hund-kvall' });
+  assert.equal('slotTimes' in doc.days.mon, false);
 });
 
-test('normalizeWeek bevarar dogChoices', () => {
-  const w = normalizeWeek({ days: { fri: { dogChoices: { fido: 'hund-kvall' } } } }, '2026-W33');
-  assert.deepEqual(w.days.fri.dogChoices, { fido: 'hund-kvall' });
-  assert.equal('dogChoices' in w.days.mon, false);
+test('normalizeWeek bevarar slotTimes', () => {
+  const w = normalizeWeek({ days: { fri: { slotTimes: { 'hund-fido': 'hund-kvall' } } } }, '2026-W33');
+  assert.deepEqual(w.days.fri.slotTimes, { 'hund-fido': 'hund-kvall' });
+  assert.equal('slotTimes' in w.days.mon, false);
 });
 
 test('normalizeJobs och randomId', () => {

@@ -8,9 +8,8 @@ import {
   DAY_KEYS, DAY_LABELS_SHORT, weekDates, currentWeekId, isoDateStr, todayStockholm,
   fmtDayTitle, fmtWeekLabel, isInReportWindow, currentMonthStr,
 } from '../dates.js';
-import { dogsForSlot, mutChoreToggle } from '../models.js';
-import { memberChip } from '../ui/chips.js';
-import { openSlotPicker } from './veckaPicker.js';
+import { displaySlots, slotDogs, slotTimeFor, mutChoreToggle } from '../models.js';
+import { buildSlotRow } from './vecka.js';
 import { toast } from '../ui/toast.js';
 
 const SLOT_EMOJI = { dog: '🐕', cook: '🍳' };
@@ -60,7 +59,7 @@ export function render(container) {
   const idx = dates.findIndex((d) => isoDateStr(d) === todayStr);
   const dayKey = DAY_KEYS[idx] || 'mon';
   const day = s.week?.days?.[dayKey] || { slots: {} };
-  const slots = [...(s.family.slots || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const daySlots = displaySlots(s.family, day);
 
   const reportNotice = renderReportNotice(s);
   if (reportNotice) container.appendChild(reportNotice);
@@ -85,8 +84,8 @@ export function render(container) {
     empty.appendChild(actions);
     schemaCard.appendChild(empty);
   } else {
-    for (const slot of slots) {
-      schemaCard.appendChild(renderSlotRow(s, day, dayKey, dates[idx], slot));
+    for (const slot of daySlots) {
+      schemaCard.appendChild(buildSlotRow(s, day, dayKey, dates[idx], slot, 'islot:'));
     }
   }
   container.appendChild(schemaCard);
@@ -96,10 +95,11 @@ export function render(container) {
     const mineCard = el('section', 'card');
     mineCard.appendChild(el('h2', 'card-title', 'Dina pass idag'));
     const mine = [];
-    for (const slot of slots) {
+    for (const slot of daySlots) {
       if ((day.slots?.[slot.id] || []).includes(member.id)) {
-        const dogs = slot.kind === 'dog' ? dogsForSlot(s.family, day, slot.id).map((d) => d.name) : [];
-        mine.push(`${SLOT_EMOJI[slot.kind] || ''} ${slot.label}${dogs.length ? ` med ${dogs.join(' & ')}` : ''}`);
+        const dogs = slotDogs(s.family, slot).map((d) => d.name);
+        const time = slot.timeChoice ? ` (${(s.family.slots.find((x) => x.id === slotTimeFor(slot, day))?.shortLabel || '').toLowerCase()})` : '';
+        mine.push(`${SLOT_EMOJI[slot.kind] || ''} ${slot.label}${time}${dogs.length && !slot.timeChoice ? ` med ${dogs.join(' & ')}` : ''}`);
       }
     }
     for (const chore of s.week.chores || []) {
@@ -116,7 +116,7 @@ export function render(container) {
     // Liten titt på morgondagen
     if (idx < 6) {
       const tomorrow = s.week.days?.[DAY_KEYS[idx + 1]] || { slots: {} };
-      const tomorrowMine = slots
+      const tomorrowMine = displaySlots(s.family, tomorrow)
         .filter((slot) => (tomorrow.slots?.[slot.id] || []).includes(member.id))
         .map((slot) => slot.label.toLowerCase());
       if (tomorrowMine.length) {
@@ -170,49 +170,6 @@ function renderReportNotice(s) {
   btn.addEventListener('click', () => navigate('jobb'));
   box.appendChild(btn);
   return box;
-}
-
-function renderSlotRow(s, day, dayKey, dateUTC, slot) {
-  const ids = day.slots?.[slot.id] || [];
-  const slotDogs = slot.kind === 'dog' ? dogsForSlot(s.family, day, slot.id) : [];
-  const dogNames = slotDogs.map((d) => d.name);
-  const names = ids.map((id) => memberById(id)?.name || id);
-
-  const row = el('button', 'slot-row');
-  row.type = 'button';
-  row.dataset.fkey = `islot:${slot.id}`;
-  row.setAttribute(
-    'aria-label',
-    `${slot.label}${dogNames.length ? ' med ' + dogNames.join(' och ') : ''}: `
-    + `${names.length ? names.join(' och ') : 'ingen vald'}. Ändra`
-  );
-
-  const label = el('span', 'slot-label');
-  const labelMain = el('span', 'slot-label-main');
-  const emoji = el('span', '', slot.kind === 'dog' ? '🐕'.repeat(Math.max(1, Math.min(slotDogs.length, 2))) : (SLOT_EMOJI[slot.kind] || '📌'));
-  emoji.setAttribute('aria-hidden', 'true');
-  labelMain.append(emoji, el('span', '', slot.shortLabel || slot.label));
-  label.appendChild(labelMain);
-  if (dogNames.length) {
-    const sub = el('span', 'slot-dogs', dogNames.join(' + '));
-    sub.setAttribute('aria-hidden', 'true');
-    label.appendChild(sub);
-  }
-  row.appendChild(label);
-
-  const chips = el('span', 'slot-chips');
-  if (ids.length === 0) {
-    chips.appendChild(el('span', 'ghost-chip', 'Vem?'));
-  } else {
-    for (const id of ids) {
-      const m = memberById(id);
-      if (m) chips.appendChild(memberChip(m));
-      else chips.appendChild(el('span', 'ghost-chip', id));
-    }
-  }
-  row.appendChild(chips);
-  row.addEventListener('click', () => openSlotPicker({ dayKey, slot, dateUTC }));
-  return row;
 }
 
 function renderChoreRow(chore) {
