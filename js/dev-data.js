@@ -16,12 +16,12 @@ export const DEV_FAMILY = {
   ],
   dogs: [
     { id: 'rex',  name: 'Rex' },
-    { id: 'fido', name: 'Fido' },
+    { id: 'fido', name: 'Fido', choice: { slots: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
   ],
   slots: [
-    { id: 'hund-morgon', label: 'Morgonpromenad', shortLabel: 'Morgon', kind: 'dog',  order: 1 },
-    { id: 'hund-lunch',  label: 'Lunchpromenad',  shortLabel: 'Lunch',  kind: 'dog',  order: 2 },
-    { id: 'hund-kvall',  label: 'Kvällspromenad', shortLabel: 'Kväll',  kind: 'dog',  order: 3 },
+    { id: 'hund-morgon', label: 'Morgonpromenad', shortLabel: 'Morgon', kind: 'dog',  order: 1, dogs: ['rex'] },
+    { id: 'hund-lunch',  label: 'Lunchpromenad',  shortLabel: 'Lunch',  kind: 'dog',  order: 2, dogs: ['rex'] },
+    { id: 'hund-kvall',  label: 'Kvällspromenad', shortLabel: 'Kväll',  kind: 'dog',  order: 3, dogs: ['rex'] },
     { id: 'matlagning',  label: 'Middag',         shortLabel: 'Middag', kind: 'cook', order: 4 },
   ],
   choreTemplates: [

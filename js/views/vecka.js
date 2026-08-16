@@ -7,7 +7,7 @@ import {
   DAY_KEYS, DAY_LABELS_SHORT, weekDates, addWeeks, currentWeekId,
   fmtWeekLabel, fmtWeekRange, fmtDayTitle, isoDateStr, todayStockholm,
 } from '../dates.js';
-import { normalizeWeek, emptyWeek, mutCopyWeekFrom, mutSetWeekNote } from '../models.js';
+import { normalizeWeek, emptyWeek, mutCopyWeekFrom, mutSetWeekNote, dogsForSlot } from '../models.js';
 import { memberChip } from '../ui/chips.js';
 import { openSlotPicker } from './veckaPicker.js';
 import { openSheet } from '../ui/sheet.js';
@@ -275,17 +275,26 @@ function renderDayCard(s, week, dayKey, dateUTC, todayStr, slots) {
     row.type = 'button';
     row.dataset.fkey = `slot:${dayKey}:${slot.id}`;
 
+    const slotDogs = slot.kind === 'dog' ? dogsForSlot(s.family, day, slot.id) : [];
+    const dogNames = slotDogs.map((d) => d.name);
     const names = ids.map((id) => memberById(id)?.name || id);
-    const dogSubtitle = slot.kind === 'dog' ? 'promenad' : '';
     row.setAttribute(
       'aria-label',
-      `${slot.label} ${DAY_LABELS_SHORT[dayKey]}${dogSubtitle ? '' : ''}: ${names.length ? names.join(' och ') : 'ingen vald'}. Ändra`
+      `${slot.label}${dogNames.length ? ' med ' + dogNames.join(' och ') : ''} ${DAY_LABELS_SHORT[dayKey]}: `
+      + `${names.length ? names.join(' och ') : 'ingen vald'}. Ändra`
     );
 
     const label = el('span', 'slot-label');
-    const emoji = el('span', '', SLOT_EMOJI[slot.kind] || '📌');
+    const labelMain = el('span', 'slot-label-main');
+    const emoji = el('span', '', slot.kind === 'dog' ? '🐕'.repeat(Math.max(1, Math.min(slotDogs.length, 2))) : (SLOT_EMOJI[slot.kind] || '📌'));
     emoji.setAttribute('aria-hidden', 'true');
-    label.append(emoji, el('span', '', slot.shortLabel || slot.label));
+    labelMain.append(emoji, el('span', '', slot.shortLabel || slot.label));
+    label.appendChild(labelMain);
+    if (dogNames.length) {
+      const sub = el('span', 'slot-dogs', dogNames.join(' + '));
+      sub.setAttribute('aria-hidden', 'true');
+      label.appendChild(sub);
+    }
     row.appendChild(label);
 
     const chips = el('span', 'slot-chips');

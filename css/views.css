@@ -92,14 +92,17 @@
 }
 .slot-label {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: 96px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 118px;
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
 }
+.slot-label-main { display: inline-flex; align-items: center; gap: 6px; }
+.slot-dogs { font-size: 11px; font-weight: 500; opacity: 0.85; }
 .slot-chips {
   display: flex;
   gap: 6px;
@@ -108,8 +111,36 @@
   justify-content: flex-end;
 }
 
+.dog-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.dog-toggle[aria-pressed="true"] { border-color: var(--success); }
+.dog-toggle .dog-toggle-state {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.dog-toggle[aria-pressed="true"] .dog-toggle-state { color: var(--success); }
+
 .picker-status { min-height: 20px; font-size: 13px; color: var(--text-secondary); text-align: center; }
 .picker-hint { font-size: 13px; color: var(--text-secondary); text-align: center; margin-top: 2px; }
+
+/* --- Idag --- */
+.mine-row { font-size: 15px; padding: 5px 0; }
 
 /* --- Sysslor --- */
 .quickadd-label { font-size: 13px; color: var(--text-secondary); margin-top: 14px; }

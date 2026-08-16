@@ -10,13 +10,14 @@ import { currentWeekId, addWeeks, isInReportWindow, currentMonthStr, isoDateStr,
 import { normalizeWeek, normalizeJobs } from './models.js';
 import { loadFamily, setWeek, routeChanged } from './controller.js';
 import { toast } from './ui/toast.js';
+import * as idag from './views/idag.js';
 import * as vecka from './views/vecka.js';
 import * as sysslor from './views/sysslor.js';
 import * as jobb from './views/jobb.js';
 import * as mer from './views/mer.js';
 import { startOnboarding, showKeyGate } from './views/onboarding.js';
 
-const VIEWS = { vecka, sysslor, jobb, mer };
+const VIEWS = { idag, vecka, sysslor, jobb, mer };
 
 const appEl = document.getElementById('app');
 const viewEl = document.getElementById('view');

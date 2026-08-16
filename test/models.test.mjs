@@ -7,7 +7,23 @@ import {
   emptyWeek, normalizeWeek, emptyJobs, normalizeJobs, randomId,
   mutSetSlot, mutCopyWeekFrom, mutChoreAdd, mutChoreToggle, mutChoreDelete,
   mutJobsToggleStep, mutJobsAddApplication, mutJobsUpdateApplication, mutJobsMarkReported,
+  dogChoiceFor, dogsForSlot,
 } from '../js/models.js';
+
+// Fiktiv familj för hundlogiken: Rex går alla turer, Fido en tur om dagen
+// (lunch eller kväll, standard lunch).
+const DOG_FAMILY = {
+  dogs: [
+    { id: 'rex', name: 'Rex' },
+    { id: 'fido', name: 'Fido', choice: { slots: ['hund-lunch', 'hund-kvall'], default: 'hund-lunch' } },
+  ],
+  slots: [
+    { id: 'hund-morgon', kind: 'dog', dogs: ['rex'] },
+    { id: 'hund-lunch', kind: 'dog', dogs: ['rex'] },
+    { id: 'hund-kvall', kind: 'dog', dogs: ['rex'] },
+    { id: 'matlagning', kind: 'cook' },
+  ],
+};
 
 test('emptyWeek har alla sju dagar', () => {
   const w = emptyWeek('2026-W33');
@@ -121,6 +137,70 @@ test('jobbmutationer: checklista, rapport och ansökningar', () => {
   upd.apply(doc);
   assert.equal(doc.applications[0].status, 'intervju');
   assert.match(upd.message, /→ Intervju/);
+});
+
+test('hundval: standard, avvikelse och ogiltig avvikelse', () => {
+  const fido = DOG_FAMILY.dogs[1];
+  assert.equal(dogChoiceFor({}, fido), 'hund-lunch'); // standard
+  assert.equal(dogChoiceFor({ dogChoices: { fido: 'hund-kvall' } }, fido), 'hund-kvall');
+  assert.equal(dogChoiceFor({ dogChoices: { fido: 'hund-morgon' } }, fido), 'hund-lunch'); // ogiltig → standard
+  assert.equal(dogChoiceFor({}, DOG_FAMILY.dogs[0]), null); // Rex har inget val
+});
+
+test('dogsForSlot: Rex alla turer, Fido bara sin valda', () => {
+  const day = {};
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-morgon').map((d) => d.name), ['Rex']);
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-lunch').map((d) => d.name), ['Rex', 'Fido']);
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'hund-kvall').map((d) => d.name), ['Rex']);
+  const moved = { dogChoices: { fido: 'hund-kvall' } };
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, moved, 'hund-lunch').map((d) => d.name), ['Rex']);
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, moved, 'hund-kvall').map((d) => d.name), ['Rex', 'Fido']);
+  assert.deepEqual(dogsForSlot(DOG_FAMILY, day, 'matlagning'), []);
+});
+
+test('dogsForSlot bakåtkompatibelt: utan dogs-fält går alla hundar utan val på alla turer', () => {
+  const oldFamily = {
+    dogs: [{ id: 'rex', name: 'Rex' }, { id: 'fido', name: 'Fido' }],
+    slots: [{ id: 'hund-morgon', kind: 'dog' }],
+  };
+  assert.deepEqual(dogsForSlot(oldFamily, {}, 'hund-morgon').map((d) => d.name), ['Rex', 'Fido']);
+});
+
+test('mutSetSlot med dogUpdates sätter och rensar dagens hundval', () => {
+  const doc = emptyWeek('2026-W33');
+  const move = mutSetSlot({
+    weekId: '2026-W33', dayKey: 'wed', dayLabelShort: 'ons',
+    slotId: 'hund-kvall', slotLabel: 'Kvällspromenad',
+    memberIds: ['anna'], memberNames: ['Anna'], actorName: 'Anna',
+    dogUpdates: { fido: 'hund-kvall' }, suffix: '; Fido → Kväll',
+  });
+  move.apply(doc);
+  assert.deepEqual(doc.days.wed.dogChoices, { fido: 'hund-kvall' });
+  assert.equal(move.message, 'v33 2026: Kvällspromenad ons: Anna; Fido → Kväll (ändrat av Anna)');
+
+  // null = tillbaka till standard → avvikelsen tas bort helt
+  mutSetSlot({
+    weekId: '2026-W33', dayKey: 'wed', dayLabelShort: 'ons',
+    slotId: 'hund-lunch', slotLabel: 'Lunchpromenad',
+    memberIds: [], memberNames: [], actorName: 'Anna',
+    dogUpdates: { fido: null },
+  }).apply(doc);
+  assert.equal('dogChoices' in doc.days.wed, false);
+});
+
+test('mutCopyWeekFrom tar med dagens hundval', () => {
+  const from = emptyWeek('2026-W33');
+  from.days.thu.dogChoices = { fido: 'hund-kvall' };
+  const doc = emptyWeek('2026-W34');
+  mutCopyWeekFrom({ weekId: '2026-W34', fromWeekId: '2026-W33', fromDoc: from, actorName: 'Anna' }).apply(doc);
+  assert.deepEqual(doc.days.thu.dogChoices, { fido: 'hund-kvall' });
+  assert.equal('dogChoices' in doc.days.mon, false);
+});
+
+test('normalizeWeek bevarar dogChoices', () => {
+  const w = normalizeWeek({ days: { fri: { dogChoices: { fido: 'hund-kvall' } } } }, '2026-W33');
+  assert.deepEqual(w.days.fri.dogChoices, { fido: 'hund-kvall' });
+  assert.equal('dogChoices' in w.days.mon, false);
 });
 
 test('normalizeJobs och randomId', () => {

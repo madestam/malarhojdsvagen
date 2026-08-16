@@ -1,6 +1,6 @@
 // Enkel central state med pub/sub. Vyerna ritas om vid varje setState.
 const state = {
-  route: 'vecka',
+  route: 'idag',
   weekId: null,        // vald vecka, t.ex. "2026-W33"
   family: null,        // family.json-dokumentet
   week: null,          // veckodokument för state.weekId (null = saknas/ej laddad)

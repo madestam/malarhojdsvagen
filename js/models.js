@@ -48,6 +48,9 @@ export function normalizeWeek(doc, weekId) {
       note: (day && typeof day.note === 'string') ? day.note : '',
       slots: (day && day.slots && typeof day.slots === 'object') ? { ...day.slots } : {},
     };
+    if (day && day.dogChoices && typeof day.dogChoices === 'object' && Object.keys(day.dogChoices).length) {
+      out.days[k].dogChoices = { ...day.dogChoices };
+    }
   }
   out.chores = Array.isArray(doc.chores) ? doc.chores.map((c) => ({ ...c })) : [];
   return out;
@@ -96,17 +99,55 @@ function ensureDay(doc, dayKey) {
   return doc.days[dayKey];
 }
 
+// --- Hundar: vilka hundar går en viss promenad en viss dag? ---
+// En slot kan ha fasta hundar (slot.dogs). En hund kan dessutom ha ett
+// dagligt val (dog.choice = { slots: [...], default: slotId }) — t.ex. en
+// äldre hund som bara går EN tur om dagen, lunch eller kväll. Dagens val
+// lagras i veckofilen som days.<dag>.dogChoices = { hundId: slotId };
+// saknas posten gäller standardvalet.
+
+export function dogChoiceFor(day, dog) {
+  if (!dog.choice) return null;
+  const override = day?.dogChoices?.[dog.id];
+  return override && dog.choice.slots.includes(override) ? override : dog.choice.default;
+}
+
+export function dogsForSlot(family, day, slotId) {
+  const slot = (family.slots || []).find((s) => s.id === slotId);
+  if (!slot || slot.kind !== 'dog') return [];
+  // Bakåtkompatibelt: utan dogs-fält går alla hundar utan eget val på alla turer.
+  const fixed = slot.dogs || (family.dogs || []).filter((d) => !d.choice).map((d) => d.id);
+  const result = [];
+  for (const dog of family.dogs || []) {
+    if (fixed.includes(dog.id)) result.push(dog);
+    else if (dog.choice && dogChoiceFor(day, dog) === slotId) result.push(dog);
+  }
+  return result;
+}
+
 // --- Veckomutationer ---
 
-export function mutSetSlot({ weekId, dayKey, dayLabelShort, slotId, slotLabel, memberIds, memberNames, actorName }) {
+// dogUpdates (valfritt): { hundId: slotId | null } — null rensar dagens
+// avvikelse (standardvalet gäller igen). suffix läggs till i commit-
+// meddelandet, t.ex. "; Messi → Kväll".
+export function mutSetSlot({ weekId, dayKey, dayLabelShort, slotId, slotLabel, memberIds, memberNames, actorName, dogUpdates, suffix = '' }) {
   const what = memberNames.length
     ? `${slotLabel} ${dayLabelShort}: ${memberNames.join(' + ')}`
-    : `${slotLabel} ${dayLabelShort} rensad`;
+    : (suffix ? `${slotLabel} ${dayLabelShort}` : `${slotLabel} ${dayLabelShort} rensad`);
   return {
     apply(doc) {
-      ensureDay(doc, dayKey).slots[slotId] = [...memberIds];
+      const day = ensureDay(doc, dayKey);
+      day.slots[slotId] = [...memberIds];
+      if (dogUpdates) {
+        if (!day.dogChoices) day.dogChoices = {};
+        for (const [dogId, chosen] of Object.entries(dogUpdates)) {
+          if (chosen) day.dogChoices[dogId] = chosen;
+          else delete day.dogChoices[dogId];
+        }
+        if (Object.keys(day.dogChoices).length === 0) delete day.dogChoices;
+      }
     },
-    message: `${weekPrefix(weekId)}: ${what} ${by(actorName)}`,
+    message: `${weekPrefix(weekId)}: ${what}${suffix} ${by(actorName)}`,
   };
 }
 
@@ -128,10 +169,16 @@ export function mutCopyWeekFrom({ weekId, fromWeekId, fromDoc, actorName }) {
   return {
     apply(doc) {
       for (const k of DAY_KEYS) {
-        const fromSlots = (fromDoc.days && fromDoc.days[k] && fromDoc.days[k].slots) || {};
-        ensureDay(doc, k).slots = Object.fromEntries(
-          Object.entries(fromSlots).map(([slotId, ids]) => [slotId, [...ids]])
+        const fromDay = (fromDoc.days && fromDoc.days[k]) || {};
+        const day = ensureDay(doc, k);
+        day.slots = Object.fromEntries(
+          Object.entries(fromDay.slots || {}).map(([slotId, ids]) => [slotId, [...ids]])
         );
+        if (fromDay.dogChoices && Object.keys(fromDay.dogChoices).length) {
+          day.dogChoices = { ...fromDay.dogChoices };
+        } else {
+          delete day.dogChoices;
+        }
       }
       doc.chores = copiedChores.map((c) => ({ ...c }));
     },

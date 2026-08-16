@@ -203,10 +203,10 @@ function renderInstall() {
   } else {
     const steps = el('ol', 'install-steps');
     for (const t of [
-      'Öppna den här sidan i Safari på din iPhone.',
-      'Tryck på dela-ikonen (rutan med pilen uppåt).',
-      'Välj "Lägg till på hemskärmen" och tryck "Lägg till".',
-      'Klart! Appen ligger nu som en egen ikon.',
+      'Öppna den här sidan i Safari på din iPhone (fungerar inte från Chrome).',
+      'Tryck på dela-knappen: fyrkanten med pilen uppåt, längst ner på skärmen. Ser du den inte? Tryck då på ⋯ (menyknappen vid adressfältet) – där finns "Dela".',
+      'Bläddra nedåt i listan och välj "Lägg till på hemskärmen", tryck sedan "Lägg till".',
+      'Klart! Öppna appen från den nya ikonen på hemskärmen.',
     ]) {
       steps.appendChild(el('li', '', t));
     }
