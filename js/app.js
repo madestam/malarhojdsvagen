@@ -247,7 +247,21 @@ function boot() {
 boot();
 
 // Service workern registreras bara i produktion — lokalt stör cachen utvecklingen.
+// När en NY version av service workern tar över (ny CACHE_VERSION är hämtad)
+// laddas sidan om en gång automatiskt, så att ingen behöver "öppna två gånger"
+// för att se senaste versionen.
 if ('serviceWorker' in navigator && location.hostname.endsWith('github.io')) {
+  let hadController = Boolean(navigator.serviceWorker.controller);
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) {
+      hadController = true; // allra första installationen — ingen omladdning
+      return;
+    }
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
