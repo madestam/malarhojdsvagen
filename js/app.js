@@ -6,7 +6,7 @@ import * as data from './data.js';
 import { GithubStore } from './store/github-store.js';
 import { LocalStore } from './store/local-store.js';
 import { tokenStore, identityStore, devFlag, fileCache } from './store/cache.js';
-import { currentWeekId, addWeeks, isInReportWindow, currentMonthStr, isoDateStr, todayStockholm } from './dates.js';
+import { currentWeekId, addWeeks, isInReportWindow, currentMonthStr, isoDateStr, todayStockholm, weeksOverlappingMonth } from './dates.js';
 import { normalizeWeek, normalizeJobs } from './models.js';
 import { loadFamily, setWeek, routeChanged } from './controller.js';
 import { toast } from './ui/toast.js';
@@ -196,7 +196,12 @@ function startApp(dev, familyDoc = null) {
   data.initData({ store, actor: null });
 
   const weekId = currentWeekId();
-  fileCache.purgeWeeks([addWeeks(weekId, -2), addWeeks(weekId, -1), weekId, addWeeks(weekId, 1), addWeeks(weekId, 2)]);
+  // Behåll cache för närliggande veckor + hela innevarande månaden
+  // (månadsräknaren för hundpassen läser alla månadens veckor).
+  fileCache.purgeWeeks([...new Set([
+    addWeeks(weekId, -2), addWeeks(weekId, -1), weekId, addWeeks(weekId, 1), addWeeks(weekId, 2),
+    ...weeksOverlappingMonth(currentMonthStr()),
+  ])]);
 
   setState({ dev, identity: identityStore.get(), weekId });
   if (familyDoc) {

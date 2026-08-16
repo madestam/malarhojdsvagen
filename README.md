@@ -19,10 +19,13 @@ varje ändring blir en git-commit, så hela historiken finns i `git log`.
 
 ## Kom igång på iPhone
 
-1. Öppna **https://madestam.github.io/malarhojdsvagen/** i **Safari** (inte Chrome).
-2. Tryck på **⋯-knappen** längst ner till höger, bredvid adressfältet.
-   (Äldre iPhone utan ⋯: tryck på dela-knappen — fyrkanten med pilen uppåt.)
-3. Välj **"Lägg till på hemskärmen"** i menyn (ser du den inte: tryck **"Dela"** först) → **Lägg till**.
+1. Skriv **https://madestam.github.io/malarhojdsvagen/** i adressfältet i **Safari-appen**
+   och öppna sidan. Viktigt: var inne på själva sidan — inte i en länk-förhandsvisning
+   eller annan webbläsare. (Står det "Öppna i Safari" i delningsmenyn är du på fel
+   ställe — tryck på den först.)
+2. Tryck på **⋯-knappen** (eller dela-fyrkanten) längst ner och välj **"Dela"**.
+3. I åtgärdslistan: välj **"Lägg till på hemskärmen"** → **Lägg till**.
+   Saknas den? Tryck **"Redigera åtgärder"** längst ner i listan och slå på den.
 4. Öppna appen från hemskärmen (viktigt — den installerade appen har eget minne).
 5. Klistra in **familjenyckeln** (finns i familjens gemensamma anteckning, eller fråga Andreas).
 6. Välj vem du är. Klart!

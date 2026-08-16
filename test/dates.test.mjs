@@ -6,7 +6,7 @@ import {
   isoWeekId, parseWeekId, mondayOfWeek, addWeeks, weekDates,
   todayStockholm, currentWeekId, isoDateStr, weekIdOfDateStr,
   fmtWeekLabel, fmtWeekRange, fmtDayTitle, prevMonthStr, currentMonthStr,
-  isInReportWindow, relativeTime, DAY_KEYS,
+  isInReportWindow, relativeTime, DAY_KEYS, weeksOverlappingMonth,
 } from '../js/dates.js';
 
 const utc = (s) => new Date(s + 'T00:00:00Z');
@@ -87,6 +87,19 @@ test('månadssträngar och rapportfönstret', () => {
   assert.equal(prevMonthStr(new Date('2026-01-05T12:00:00Z')), '2025-12');
   assert.equal(isInReportWindow(new Date('2026-08-14T12:00:00Z')), true);
   assert.equal(isInReportWindow(new Date('2026-08-15T12:00:00Z')), false);
+});
+
+test('weeksOverlappingMonth: alla veckor med minst en dag i månaden', () => {
+  // Augusti 2026: 1 aug (lör) ligger i v31, 31 aug (mån) i v36 → sex veckor
+  assert.deepEqual(weeksOverlappingMonth('2026-08'),
+    ['2026-W31', '2026-W32', '2026-W33', '2026-W34', '2026-W35', '2026-W36']);
+  // December 2026: 31 dec (torsdag) ligger i v53 — årets sista vecka ingår
+  const dec = weeksOverlappingMonth('2026-12');
+  assert.equal(dec[0], '2026-W49');
+  assert.equal(dec[dec.length - 1], '2026-W53');
+  // Februari 2027 (28 dagar, börjar på en måndag) → exakt fyra veckor
+  assert.deepEqual(weeksOverlappingMonth('2027-02'),
+    ['2027-W05', '2027-W06', '2027-W07', '2027-W08']);
 });
 
 test('relativeTime på svenska', () => {

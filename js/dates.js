@@ -74,6 +74,20 @@ export function weekIdOfDateStr(dateStr) {
   return isoWeekId(new Date(dateStr + 'T00:00:00Z'));
 }
 
+// Alla ISO-veckor som har minst en dag i en given månad ("2026-08" → 4–6 st).
+export function weeksOverlappingMonth(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)); // sista dagen i månaden
+  const weeks = [];
+  let monday = mondayOfWeek(isoWeekId(new Date(Date.UTC(y, m - 1, 1))));
+  while (monday <= last) {
+    weeks.push(isoWeekId(monday));
+    monday = new Date(monday);
+    monday.setUTCDate(monday.getUTCDate() + 7);
+  }
+  return weeks;
+}
+
 // --- Formatering (sv-SE). Datumen är UTC-midnatt, därav timeZone: 'UTC'. ---
 
 const longFmt = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'long', timeZone: 'UTC' });

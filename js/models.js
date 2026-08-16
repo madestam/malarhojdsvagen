@@ -1,7 +1,7 @@
 // Datamodeller: tomma dokument, normalisering och mutationsfabriker.
 // En mutation = { apply(doc), message } — apply körs om på färsk data vid
 // konflikt, och message blir git-commitmeddelandet i datarepot.
-import { DAY_KEYS, parseWeekId } from './dates.js';
+import { DAY_KEYS, parseWeekId, weekDates, isoDateStr } from './dates.js';
 
 export const APPLICATION_STATUSES = [
   { id: 'att-soka',   label: 'Att söka' },
@@ -136,6 +136,30 @@ export function displaySlots(family, day) {
     if (!result.includes(a)) result.push(a);
   }
   return result;
+}
+
+// Månadens hundpass per medlem: summerar alla hundslot-tilldelningar för de
+// dagar som ligger i månaden, över de veckodokument som skickas in
+// ({ weekId: doc|null }). Middag räknas inte — det här är hundrättvisan.
+export function countDogWalksForMonth(family, weekDocs, monthStr) {
+  const counts = Object.fromEntries((family.members || []).map((m) => [m.id, 0]));
+  const dogSlotIds = new Set((family.slots || []).filter((s) => s.kind === 'dog').map((s) => s.id));
+  for (const [weekId, doc] of Object.entries(weekDocs)) {
+    if (!doc) continue;
+    const dates = weekDates(weekId);
+    DAY_KEYS.forEach((dayKey, i) => {
+      if (!isoDateStr(dates[i]).startsWith(monthStr)) return;
+      const slots = doc.days?.[dayKey]?.slots;
+      if (!slots) return;
+      for (const [slotId, ids] of Object.entries(slots)) {
+        if (!dogSlotIds.has(slotId)) continue;
+        for (const id of ids || []) {
+          if (id in counts) counts[id]++;
+        }
+      }
+    });
+  }
+  return counts;
 }
 
 // --- Veckomutationer ---

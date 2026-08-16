@@ -1,14 +1,15 @@
 // Idag — hemvyn: hälsning, dagens schema, dina pass, sysslor och
 // rapportpåminnelse. Visar alltid innevarande vecka.
-import { getState } from '../store.js';
+import { getState, setState } from '../store.js';
 import { setWeek, mutateWeek, currentActor, memberById } from '../controller.js';
 import { navigate } from '../router.js';
 import * as data from '../data.js';
 import {
   DAY_KEYS, DAY_LABELS_SHORT, weekDates, currentWeekId, isoDateStr, todayStockholm,
-  fmtDayTitle, fmtWeekLabel, isInReportWindow, currentMonthStr,
+  fmtDayTitle, fmtWeekLabel, isInReportWindow, currentMonthStr, monthNameOf,
+  weeksOverlappingMonth,
 } from '../dates.js';
-import { displaySlots, slotDogs, slotTimeFor, mutChoreToggle } from '../models.js';
+import { displaySlots, slotDogs, slotTimeFor, mutChoreToggle, countDogWalksForMonth } from '../models.js';
 import { buildSlotRow } from './vecka.js';
 import { toast } from '../ui/toast.js';
 
@@ -151,6 +152,71 @@ export function render(container) {
     choresCard.appendChild(all);
     container.appendChild(choresCard);
   }
+
+  container.appendChild(renderMonthCard(s));
+}
+
+// --- Månadens hundpass: alla fem delar lika, avstämt per månad ---
+// 28 pass i veckan går inte jämnt upp på fem personer, så rättvisan följs
+// upp över hela månaden i stället.
+
+const monthFetchState = new Map(); // weekPath -> 'pending' | 'done'
+
+function renderMonthCard(s) {
+  const month = currentMonthStr();
+  const weeks = weeksOverlappingMonth(month);
+
+  const weekDocs = {};
+  let missing = 0;
+  for (const w of weeks) {
+    const path = data.weekPath(w);
+    const doc = w === s.weekId ? s.week : data.getCached(path);
+    weekDocs[w] = doc;
+    if (!doc && monthFetchState.get(path) !== 'done') {
+      missing++;
+      if (!monthFetchState.has(path)) {
+        monthFetchState.set(path, 'pending');
+        data.refresh(path)
+          .catch(() => {})
+          .finally(() => {
+            monthFetchState.set(path, 'done');
+            setState({}); // rita om när fler veckor räknats in
+          });
+      }
+    }
+  }
+
+  const counts = countDogWalksForMonth(s.family, weekDocs, month);
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  const card = el('section', 'card');
+  const head = el('div', 'day-head');
+  head.appendChild(el('h2', 'card-title', `Hundpassen i ${monthNameOf(month)}`));
+  head.appendChild(el('span', 'done-count', `${total} pass`));
+  card.appendChild(head);
+
+  const row = el('div', 'week-loads');
+  row.style.justifyContent = 'flex-start';
+  for (const m of s.family.members) {
+    const chip = el('span', 'load-chip' + (counts[m.id] === 0 ? ' dim' : ''));
+    chip.setAttribute('role', 'img');
+    chip.setAttribute('aria-label', `${m.name}: ${counts[m.id]} hundpass i ${monthNameOf(month)}`);
+    const av = el('span', 'avatar', m.initial);
+    av.style.setProperty('--member-color', m.color);
+    av.style.width = '26px';
+    av.style.height = '26px';
+    av.style.fontSize = '12px';
+    av.setAttribute('aria-hidden', 'true');
+    chip.append(av, el('span', '', String(counts[m.id])));
+    row.appendChild(chip);
+  }
+  card.appendChild(row);
+
+  card.appendChild(el('p', 'caption',
+    missing > 0
+      ? 'Räknar ihop månadens alla veckor…'
+      : 'Fyra hundpass om dagen — målet är att alla ligger ungefär lika när månaden är slut.'));
+  return card;
 }
 
 function renderReportNotice(s) {

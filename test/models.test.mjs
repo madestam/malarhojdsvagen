@@ -7,7 +7,7 @@ import {
   emptyWeek, normalizeWeek, emptyJobs, normalizeJobs, randomId,
   mutSetSlot, mutCopyWeekFrom, mutChoreAdd, mutChoreToggle, mutChoreDelete,
   mutJobsToggleStep, mutJobsAddApplication, mutJobsUpdateApplication, mutJobsMarkReported,
-  slotDogs, slotTimeFor, displaySlots,
+  slotDogs, slotTimeFor, displaySlots, countDogWalksForMonth,
 } from '../js/models.js';
 
 // Fiktiv familj för hundlogiken: Rex går alla tre turer, Fido har en egen
@@ -196,6 +196,25 @@ test('normalizeWeek bevarar slotTimes', () => {
   const w = normalizeWeek({ days: { fri: { slotTimes: { 'hund-fido': 'hund-kvall' } } } }, '2026-W33');
   assert.deepEqual(w.days.fri.slotTimes, { 'hund-fido': 'hund-kvall' });
   assert.equal('slotTimes' in w.days.mon, false);
+});
+
+test('countDogWalksForMonth räknar bara hundpass och bara månadens dagar', () => {
+  const family = {
+    members: [{ id: 'anna' }, { id: 'bosse' }, { id: 'cilla' }],
+    slots: DOG_FAMILY.slots,
+  };
+  // 2026-W36 spänner över månadsskiftet: mån 31 aug, tis 1 sep …
+  const w36 = emptyWeek('2026-W36');
+  w36.days.mon.slots = { 'hund-morgon': ['anna'], matlagning: ['anna'] };      // 31 aug → 1 hundpass (middag räknas ej)
+  w36.days.tue.slots = { 'hund-morgon': ['anna'], 'hund-fido': ['bosse'] };    // 1 sep → utanför augusti
+  const w35 = emptyWeek('2026-W35');
+  w35.days.wed.slots = { 'hund-lunch': ['bosse', 'cilla'], 'hund-kvall': ['anna'] }; // 26 aug
+
+  const aug = countDogWalksForMonth(family, { '2026-W36': w36, '2026-W35': w35, '2026-W34': null }, '2026-08');
+  assert.deepEqual(aug, { anna: 2, bosse: 1, cilla: 1 });
+
+  const sep = countDogWalksForMonth(family, { '2026-W36': w36 }, '2026-09');
+  assert.deepEqual(sep, { anna: 1, bosse: 1, cilla: 0 });
 });
 
 test('normalizeJobs och randomId', () => {
