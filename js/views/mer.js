@@ -7,6 +7,7 @@ import { tokenStore, identityStore } from '../store/cache.js';
 import { relativeTime } from '../dates.js';
 import { toast } from '../ui/toast.js';
 
+let swVersion = null;      // null = ej efterfrågad, '' = ingen SW (lokalt/Safari-flik)
 let changes = null;        // null = ej hämtade, [] = tomt
 let changesError = false;
 let changesFetchedAt = 0;  // för 60 s-färskhet (matchar datalagrets commit-cache)
@@ -219,11 +220,38 @@ function renderInstall() {
 
 // --- Om ---
 
+// Frågar den körande service workern vilken CACHE_VERSION den har — det är
+// det enda sanna svaret på "vilken version har min telefon?".
+function fetchSwVersion() {
+  const ctrl = navigator.serviceWorker?.controller;
+  if (!ctrl) {
+    swVersion = '';
+    return;
+  }
+  const channel = new MessageChannel();
+  const timer = setTimeout(() => {
+    if (swVersion === null) {
+      swVersion = '';
+      setState({});
+    }
+  }, 1500);
+  channel.port1.onmessage = (e) => {
+    clearTimeout(timer);
+    swVersion = e.data?.version || '';
+    setState({});
+  };
+  ctrl.postMessage('version', [channel.port2]);
+}
+
 function renderAbout(s) {
   const section = el('section', 'settings-section');
   section.appendChild(el('h2', 'settings-heading', 'Om'));
   const title = s.family?.settings?.title || 'Mälarhöjdsvägen';
-  section.appendChild(el('p', 'about-line', `${title} · familjens veckoplanerare · version ${CONFIG.appVersion}`));
+  if (swVersion === null) fetchSwVersion();
+  const versionText = swVersion
+    ? swVersion.replace('mhv-shell-', 'version ')
+    : `version ${CONFIG.appVersion}`;
+  section.appendChild(el('p', 'about-line', `${title} · familjens veckoplanerare · ${versionText}`));
   section.appendChild(el('p', 'about-line', 'Byggd med kärlek (och en hel del promenader). 🐕🐕'));
   const link = el('a', 'about-line', 'Koden på GitHub ↗');
   link.href = CONFIG.repoUrl;

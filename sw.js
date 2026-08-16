@@ -1,7 +1,7 @@
 // Service worker: cache-first för appens egna filer (skalet), aldrig för
 // api.github.com — token-försedda anrop och familjedata får inte hamna i
 // någon cache. Bumpa CACHE_VERSION vid varje deploy.
-const CACHE_VERSION = 'mhv-shell-v10';
+const CACHE_VERSION = 'mhv-shell-v11';
 
 const ASSETS = [
   './',
@@ -41,6 +41,13 @@ const ASSETS = [
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
 ];
+
+// Låter appen fråga vilken version som faktiskt kör (visas under Mer → Om).
+self.addEventListener('message', (event) => {
+  if (event.data === 'version') {
+    event.ports[0]?.postMessage({ version: CACHE_VERSION });
+  }
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
