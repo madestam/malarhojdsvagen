@@ -7,10 +7,11 @@ import * as data from '../data.js';
 import {
   DAY_KEYS, DAY_LABELS_SHORT, weekDates, currentWeekId, isoDateStr, todayStockholm,
   fmtDayTitle, fmtWeekLabel, isInReportWindow, currentMonthStr, monthNameOf,
-  weeksOverlappingMonth,
+  weeksOverlappingMonth, addWeeks,
 } from '../dates.js';
-import { displaySlots, slotDogs, slotTimeFor, mutChoreToggle, countDogWalksForMonth } from '../models.js';
+import { displaySlots, slotDogs, slotTimeFor, mutChoreToggle, countDogWalksForMonth, unbookedDogSlots } from '../models.js';
 import { buildSlotRow } from './vecka.js';
+import { openSlotPicker } from './veckaPicker.js';
 import { toast } from '../ui/toast.js';
 
 const SLOT_EMOJI = { dog: '🐕', cook: '🍳' };
@@ -64,6 +65,9 @@ export function render(container) {
 
   const reportNotice = renderReportNotice(s);
   if (reportNotice) container.appendChild(reportNotice);
+
+  const gapNotice = renderDogGapNotice(s, dayKey, day, idx, dates);
+  if (gapNotice) container.appendChild(gapNotice);
 
   // --- Dagens schema ---
   const schemaCard = el('section', 'card day-card today');
@@ -246,6 +250,105 @@ function renderMonthCard(s) {
   if (missing === 0 && spread > 8) caption.className = 'caption caption-warn';
   card.appendChild(caption);
   return card;
+}
+
+// --- Obokade hundpass: hundarna MÅSTE ut — varna för idag och i morgon ---
+
+function gapLabel(s, day, slot) {
+  const dogs = slotDogs(s.family, slot).map((d) => d.name).join(' & ');
+  if (slot.timeChoice) {
+    const t = (s.family.slots || []).find((x) => x.id === slotTimeFor(slot, day));
+    return `${dogs} (${(t?.shortLabel || '').toLowerCase()})`;
+  }
+  return `${slot.shortLabel || slot.label} · ${dogs}`;
+}
+
+function renderDogGapNotice(s, dayKey, day, idx, dates) {
+  if (!s.week) return null; // oplanerad vecka har redan sitt eget kort
+
+  const todayGaps = unbookedDogSlots(s.family, day);
+
+  // Morgondagens luckor: inom veckan direkt ur veckodokumentet; på söndagar
+  // tittar vi i nästa veckas (ev. cachade) dokument.
+  let tomorrowGaps = [];
+  let tomorrowDay = null;
+  let tomorrowKey = null;
+  let nextWeekCase = null; // 'unplanned' | 'planned' | null
+  if (idx < 6) {
+    tomorrowKey = DAY_KEYS[idx + 1];
+    tomorrowDay = s.week.days?.[tomorrowKey] || { slots: {} };
+    tomorrowGaps = unbookedDogSlots(s.family, tomorrowDay);
+  } else {
+    const nextId = addWeeks(s.weekId, 1);
+    const nextDoc = data.getCached(data.weekPath(nextId));
+    const monday = nextDoc?.days?.mon;
+    if (monday && Object.values(monday.slots || {}).some((ids) => ids && ids.length)) {
+      nextWeekCase = 'planned';
+      tomorrowGaps = unbookedDogSlots(s.family, monday);
+      tomorrowDay = monday;
+    } else {
+      nextWeekCase = 'unplanned';
+    }
+  }
+
+  const tomorrowNeedsAttention = nextWeekCase === 'unplanned' || tomorrowGaps.length > 0;
+  if (todayGaps.length === 0 && !tomorrowNeedsAttention) return null;
+
+  const box = el('section', 'notice');
+  box.setAttribute('role', 'region');
+  box.setAttribute('aria-label', 'Obokade hundpass');
+  box.appendChild(el('p', 'notice-title', '🐕 Obokade hundpass'));
+
+  if (todayGaps.length > 0) {
+    const row = el('div', 'link-pills');
+    row.appendChild(el('span', 'gap-day-label', 'Idag:'));
+    for (const slot of todayGaps) {
+      const btn = el('button', 'link-pill gap-pill', gapLabel(s, day, slot));
+      btn.dataset.fkey = `gap:${dayKey}:${slot.id}`;
+      btn.addEventListener('click', () => openSlotPickerFromGap(dayKey, slot, dates[idx]));
+      row.appendChild(btn);
+    }
+    box.appendChild(row);
+  }
+
+  if (idx < 6 && tomorrowGaps.length > 0) {
+    const row = el('div', 'link-pills');
+    row.appendChild(el('span', 'gap-day-label', 'I morgon:'));
+    const tomorrowDate = new Date(dates[idx]);
+    tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+    for (const slot of tomorrowGaps) {
+      const btn = el('button', 'link-pill gap-pill', gapLabel(s, tomorrowDay, slot));
+      btn.dataset.fkey = `gap:${tomorrowKey}:${slot.id}`;
+      btn.addEventListener('click', () => openSlotPickerFromGap(tomorrowKey, slot, tomorrowDate));
+      row.appendChild(btn);
+    }
+    box.appendChild(row);
+  } else if (nextWeekCase === 'unplanned') {
+    box.appendChild(el('p', '', 'I morgon börjar en ny vecka som inte är planerad än.'));
+    const btn = el('button', 'btn-quiet btn-small', 'Planera nästa vecka ›');
+    btn.dataset.fkey = 'gap-next-week';
+    btn.addEventListener('click', () => {
+      setWeek(addWeeks(getState().weekId, 1));
+      navigate('vecka');
+    });
+    box.appendChild(btn);
+  } else if (nextWeekCase === 'planned' && tomorrowGaps.length > 0) {
+    box.appendChild(el('p', '', `I morgon (nästa vecka): ${tomorrowGaps.map((sl) => gapLabel(s, tomorrowDay, sl)).join(', ')} obokade.`));
+    const btn = el('button', 'btn-quiet btn-small', 'Öppna nästa vecka ›');
+    btn.dataset.fkey = 'gap-next-week';
+    btn.addEventListener('click', () => {
+      setWeek(addWeeks(getState().weekId, 1));
+      navigate('vecka');
+    });
+    box.appendChild(btn);
+  }
+
+  return box;
+}
+
+// Idag-vyn visar alltid innevarande vecka, så väljaren kan öppnas direkt.
+function openSlotPickerFromGap(dayKey, slot, dateUTC) {
+  openSlotPicker({ dayKey, slot, dateUTC });
 }
 
 function renderReportNotice(s) {

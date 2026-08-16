@@ -143,6 +143,14 @@
 .mine-row { font-size: 15px; padding: 5px 0; }
 .load-delta { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
 .caption-warn { color: var(--warning); font-weight: 600; }
+.gap-day-label { font-size: 13px; font-weight: 700; align-self: center; }
+.gap-pill { border-color: var(--warning); color: var(--warning); font-weight: 700; }
+.ghost-chip.ghost-warn {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-weight: 700;
+}
 
 /* --- Sysslor --- */
 .quickadd-label { font-size: 13px; color: var(--text-secondary); margin-top: 14px; }

@@ -7,7 +7,7 @@ import {
   emptyWeek, normalizeWeek, emptyJobs, normalizeJobs, randomId,
   mutSetSlot, mutCopyWeekFrom, mutChoreAdd, mutChoreToggle, mutChoreDelete,
   mutJobsToggleStep, mutJobsAddApplication, mutJobsUpdateApplication, mutJobsMarkReported,
-  slotDogs, slotTimeFor, displaySlots, countDogWalksForMonth,
+  slotDogs, slotTimeFor, displaySlots, countDogWalksForMonth, unbookedDogSlots,
 } from '../js/models.js';
 
 // Fiktiv familj för hundlogiken: Rex går alla tre turer, Fido har en egen
@@ -196,6 +196,17 @@ test('normalizeWeek bevarar slotTimes', () => {
   const w = normalizeWeek({ days: { fri: { slotTimes: { 'hund-fido': 'hund-kvall' } } } }, '2026-W33');
   assert.deepEqual(w.days.fri.slotTimes, { 'hund-fido': 'hund-kvall' });
   assert.equal('slotTimes' in w.days.mon, false);
+});
+
+test('unbookedDogSlots: hundpass utan person — middagen räknas aldrig', () => {
+  const empty = { slots: {} };
+  assert.deepEqual(unbookedDogSlots(DOG_FAMILY, empty).map((s) => s.id),
+    ['hund-morgon', 'hund-lunch', 'hund-fido', 'hund-kvall']);
+  const partly = { slots: { 'hund-morgon': ['anna'], 'hund-fido': ['bosse'], matlagning: [] } };
+  assert.deepEqual(unbookedDogSlots(DOG_FAMILY, partly).map((s) => s.id),
+    ['hund-lunch', 'hund-kvall']);
+  const full = { slots: { 'hund-morgon': ['anna'], 'hund-lunch': ['bosse'], 'hund-kvall': ['cilla'], 'hund-fido': ['anna'] } };
+  assert.deepEqual(unbookedDogSlots(DOG_FAMILY, full), []);
 });
 
 test('countDogWalksForMonth räknar bara hundpass och bara månadens dagar', () => {

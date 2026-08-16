@@ -317,7 +317,18 @@ export function buildSlotRow(s, day, dayKey, dateUTC, slot, fkeyPrefix = 'slot:'
 
   const chips = el('span', 'slot-chips');
   if (ids.length === 0) {
-    chips.appendChild(el('span', 'ghost-chip', 'Vem?'));
+    const ghost = el('span', 'ghost-chip', 'Vem?');
+    // Obokade HUNDPASS idag/imorgon är på riktigt bråttom — varningsfärg.
+    if (slot.kind === 'dog') {
+      const today = todayStockholm();
+      const tomorrow = new Date(today);
+      tomorrow.setUTCDate(today.getUTCDate() + 1);
+      const ds = isoDateStr(dateUTC);
+      if (ds === isoDateStr(today) || ds === isoDateStr(tomorrow)) {
+        ghost.classList.add('ghost-warn');
+      }
+    }
+    chips.appendChild(ghost);
   } else {
     for (const id of ids) {
       const m = memberById(id);

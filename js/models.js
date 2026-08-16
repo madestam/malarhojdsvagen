@@ -162,6 +162,15 @@ export function countDogWalksForMonth(family, weekDocs, monthStr) {
   return counts;
 }
 
+// Obokade hundpass en viss dag — hundslots utan tilldelad person.
+// Hundarna MÅSTE ut varje schemalagt pass, så det här är appens viktigaste
+// varningssignal.
+export function unbookedDogSlots(family, day) {
+  return displaySlots(family, day).filter(
+    (s) => s.kind === 'dog' && !((day?.slots?.[s.id]) || []).length
+  );
+}
+
 // --- Veckomutationer ---
 
 // slotTimes (valfritt): { slotId: tidSlotId | null } — null rensar dagens
