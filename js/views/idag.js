@@ -191,6 +191,9 @@ function renderMonthCard(s) {
   const avg = total / Math.max(1, s.family.members.length);
   const values = Object.values(counts);
   const spread = values.length ? Math.max(...values) - Math.min(...values) : 0;
+  // Plus/minus mot snittet visas först när månaden har nog med data för att
+  // snittet ska betyda något (~5 dagar à 4 pass) — annars är det bara brus.
+  const showDeltas = total >= 20;
 
   const card = el('section', 'card');
   const head = el('div', 'day-head');
@@ -205,7 +208,7 @@ function renderMonthCard(s) {
     // Avvikelse mot snittet hittills i månaden — så syns direkt vem som
     // ligger före eller efter, utan huvudräkning.
     const delta = Math.round(count - avg);
-    const showDelta = total > 0 && delta !== 0;
+    const showDelta = showDeltas && delta !== 0;
     const chip = el('span', 'load-chip' + (count === 0 ? ' dim' : ''));
     chip.setAttribute('role', 'img');
     chip.setAttribute('aria-label',
@@ -234,6 +237,8 @@ function renderMonthCard(s) {
     captionText = 'Räknar ihop månadens alla veckor…';
   } else if (spread > 8) {
     captionText = 'Det skiljer en del just nu — snegla på fördelningen när ni planerar nästa vecka.';
+  } else if (showDeltas) {
+    captionText = 'Plus/minus visar läget mot månadens snitt — målet är att alla ligger ungefär lika när månaden är slut.';
   } else {
     captionText = 'Fyra hundpass om dagen — målet är att alla ligger ungefär lika när månaden är slut.';
   }
